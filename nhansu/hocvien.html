@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Viện Cảnh Sát Los Santos - Hệ Thống Tuyển Sinh</title>
+    
+    <!-- Tailwind & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto:wght@400;500;700&family=Dancing+Script:wght@600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- Cài đặt Chung (Theme LSPD) --- */
+        :root {
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+        }
+
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        /* Input Fields của Panel Admin */
+        .form-input {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        /* --- CERTIFICATE STYLING (Giấy báo trúng tuyển) --- */
+        .certificate-container {
+            background: #fff;
+            color: #1e293b;
+            position: relative;
+            box-shadow: 0 20px 50px -12px rgba(0,0,0,0.7);
+            border: 15px solid #1e3a8a; /* Blue-900 */
+            padding: 40px;
+            overflow: hidden;
+            max-width: 850px;
+            margin: 0 auto;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .certificate-border {
+            border: 2px solid #d4af37; /* Gold */
+            padding: 20px;
+            height: 100%;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Watermark Ẩn Dưới Cùng */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.06;
+            z-index: 1; /* Nằm dưới nội dung, trên nền trắng */
+            width: 70%;
+            pointer-events: none;
+        }
+
+        .content { position: relative; z-index: 20; }
+
+        .header-title { font-family: 'Playfair Display', serif; color: #1e3a8a; letter-spacing: 2px; }
+        .congrats-text { font-family: 'Playfair Display', serif; color: #b71c1c; text-transform: uppercase; }
+        .signature-font { font-family: 'Dancing Script', cursive; font-size: 1.8rem; }
+
+        .stamp {
+            position: absolute; bottom: 20px; right: 140px;
+            width: 120px; height: 120px;
+            border: 4px solid rgba(183, 28, 28, 0.6); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center; color: rgba(183, 28, 28, 0.6);
+            font-weight: bold; transform: rotate(-15deg);
+            pointer-events: none; z-index: 5; font-size: 10px; line-height: 1.2;
+        }
+
+        .logo-preview { max-height: 120px; max-width: 250px; object-fit: contain; }
+        .signature-img { max-height: 80px; object-fit: contain; margin: 0 auto; }
+
+        /* Modal Authentication */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(2, 6, 23, 0.85); backdrop-filter: blur(10px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s ease; z-index: 100; padding: 1rem;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { transform: scale(0.95); transition: all 0.3s ease; opacity: 0; }
+        .modal-overlay.active .modal-content { transform: scale(1); opacity: 1; }
+
+        /* Admin Control Visibility */
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only-block { display: block !important; }
+        body.is-admin .admin-only-flex { display: flex !important; }
+        body.is-admin .admin-only-cell { display: table-cell !important; }
+
+        /* Trạng thái danh sách */
+        .badge {
+            display: inline-flex; align-items: center; padding: 0.25rem 0.625rem;
+            border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent;
+        }
+        .status-pass { background-color: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-500/30">
+
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+            <div class="flex items-center gap-4">
+                <a href="/trangchu.html" class="relative p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 transition-colors cursor-pointer block">
+                    <img src="/img/logo xanh.png" 
+                         alt="LSPD Logo" class="h-12 w-auto object-contain drop-shadow-lg"/>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight">
+                        DANH SÁCH TRÚNG TUYỂN
+                    </h1>
+                    <p class="text-sm text-slate-400 font-medium tracking-widest uppercase mt-1">Học Viện Cảnh Sát Los Santos</p>
+                </div>
+            </div>
+
+            <button id="loginToggleBtn" class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition cursor-pointer shadow-lg shadow-yellow-500/5">
+                <i class="fas fa-lock"></i> Đăng nhập Admin
+            </button>
+        </header>
+
+        <!-- Container Chính -->
+        <div class="flex flex-col xl:flex-row gap-8 items-start">
+
+            <!-- CỘT TRÁI: DANH SÁCH TRÚNG TUYỂN (Ai cũng thấy) -->
+            <div class="w-full xl:w-2/5 flex flex-col gap-6" id="listSection">
+                <div class="glass-panel overflow-hidden flex flex-col h-[800px] border-t-4 border-t-emerald-500">
+                    <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 flex justify-between items-center shrink-0">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fas fa-user-graduate text-emerald-400"></i> Học Viên Trúng Tuyển
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-1">Danh sách Tân Học viên khóa mới nhất.</p>
+                        </div>
+                        <span id="recordCount" class="bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-medium border border-slate-600">0 Học viên</span>
+                    </div>
+                    
+                    <div class="p-4 border-b border-slate-700/50 bg-slate-900/50 shrink-0">
+                         <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="searchInput" class="form-input pl-9 bg-slate-800 border-slate-600" placeholder="Tìm theo Tên hoặc CID..."/>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-4 space-y-3" id="studentsList">
+                        <div class="text-center py-10 text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p>Đang tải danh sách...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CỘT PHẢI: KHUNG EDIT & XUẤT ẢNH (Chỉ Admin) -->
+            <div class="w-full xl:w-3/5 admin-only admin-only-block" id="adminFormSection">
+                
+                <!-- Bảng Điều Khiển Admin -->
+                <div class="glass-panel p-6 mb-6 border-t-4 border-t-blue-500">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-sliders-h text-blue-400"></i> Bảng Điều Khiển Tạo Giấy Báo
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700 pb-1">1. Thông tin Tân Học Viên</h3>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Họ và Tên</label>
+                                <input type="text" id="inputName" placeholder="Ví dụ: NGUYỄN VĂN A" class="form-input">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">SĐT</label>
+                                <input type="text" id="inputPhone" placeholder="Ví dụ: 090xxxxxxx" class="form-input">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">CID</label>
+                                <input type="text" id="inputCID" placeholder="Ví dụ: 12345" class="form-input">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Callsign</label>
+                                <input type="text" id="inputCallsign" placeholder="Ví dụ: Alpha-01" class="form-input">
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h3 class="font-bold text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700 pb-1">2. Thiết lập Giấy Báo</h3>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Số Quyết Định</label>
+                                <input type="text" id="inputDecision" placeholder="Số: 789/QĐ-LSPD-2024" class="form-input">
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Tải lên Logo (Thay giữa trang)</label>
+                                <input type="file" id="inputLogo" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-600 file:text-white cursor-pointer">
+                            </div>
+                            <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Tải lên Chữ ký Giám đốc</label>
+                                <input type="file" id="inputSigDirector" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-600 file:text-white cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Tên Giám đốc CATP</label>
+                                <input type="text" id="inputDirectorName" placeholder="Ví dụ: Chief of Police" class="form-input">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <button id="previewBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-lg shadow-indigo-600/20">
+                            <i class="fas fa-eye mr-2"></i> Cập Nhật Xem Trước
+                        </button>
+                        <button id="saveAndExportBtn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-lg shadow-emerald-600/20">
+                            <i class="fas fa-save mr-2"></i> Lưu Học Viên & Xuất Ảnh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Bản In -->
+                <div id="certificateContainerWrapper" class="overflow-x-auto pb-4">
+                    <div id="certificate" class="certificate-container">
+                        <!-- Watermark Logo Ẩn (Sẽ được set qua JS) -->
+                        <img id="watermarkImg" src="/img/logo xanh.png" class="watermark" alt="Watermark">
+                        
+                        <div class="certificate-border">
+                            <div class="content">
+                                <!-- Header: Logo -->
+                                <div class="text-center mb-8 flex flex-col items-center">
+                                    <div id="logoContainer" class="mb-4 h-[120px] flex justify-center items-center">
+                                        <!-- Default Logo LSPD -->
+                                        <img src="/img/logo xanh.png" class="logo-preview drop-shadow-md" alt="Logo">
+                                    </div>
+                                    <div class="text-xl font-bold tracking-widest uppercase text-blue-900 border-b-2 border-black pb-1 mb-1">
+                                        HỌC VIỆN CẢNH SÁT LOS SANTOS
+                                    </div>
+                                    <p class="text-xs font-bold uppercase tracking-widest text-slate-800">Danh dự - Trách nhiệm - Kỷ cương</p>
+                                </div>
+
+                                <div class="flex justify-between items-start mb-8">
+                                    <div class="text-left">
+                                        <p class="font-bold text-blue-900 uppercase">HỘI ĐỒNG TUYỂN SINH</p>
+                                        <p class="text-sm italic mt-1 font-medium" id="displayDecision">Số: .../QĐ-LSPD-2024</p>
+                                    </div>
+                                    <div class="text-right text-sm font-medium">
+                                        <p>Los Santos, ngày <span id="currentDay">...</span> tháng <span id="currentMonth">...</span> năm <span id="currentYear">...</span></p>
+                                    </div>
+                                </div>
+
+                                <div class="text-center mb-10">
+                                    <h1 class="header-title text-4xl mb-3">GIẤY BÁO TRÚNG TUYỂN</h1>
+                                    <div class="h-1 w-32 bg-yellow-500 mx-auto"></div>
+                                </div>
+
+                                <!-- Nội dung chính -->
+                                <div class="space-y-6 text-lg font-medium text-slate-800">
+                                    <p>Căn cứ vào kết quả xét duyệt hồ sơ và đợt phỏng vấn tuyển dụng:</p>
+                                    
+                                    <div class="pl-8 grid grid-cols-2 gap-y-4">
+                                        <div class="col-span-2">
+                                            <p>Họ và Tên: <span id="displayName" class="font-bold text-2xl text-blue-900 border-b-2 border-slate-400 min-w-[250px] inline-block ml-2 uppercase">............................</span></p>
+                                        </div>
+                                        <div>
+                                            <p>CID: <span id="displayCID" class="font-bold border-b border-slate-400 min-w-[120px] inline-block ml-2 text-blue-900">................</span></p>
+                                        </div>
+                                        <div>
+                                            <p>Callsign: <span id="displayCallsign" class="font-bold border-b border-slate-400 min-w-[120px] inline-block ml-2 text-blue-900">................</span></p>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <p>Số điện thoại liên lạc: <span id="displayPhone" class="font-bold border-b border-slate-400 min-w-[200px] inline-block ml-2 text-blue-900">....................</span></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-8 mb-8 p-6 bg-blue-50 border-l-8 border-blue-800 shadow-sm relative">
+                                        <h3 class="congrats-text text-xl font-bold text-center leading-relaxed">
+                                            CHÚC MỪNG ĐỒNG CHÍ ĐÃ TRÚNG TUYỂN VÀO <br> HỌC VIỆN CẢNH SÁT LOS SANTOS
+                                        </h3>
+                                    </div>
+
+                                    <p class="text-base leading-relaxed italic text-gray-700 text-justify">
+                                        Học viện ghi nhận sự xuất sắc của đồng chí trong kỳ thi vừa qua. Đề nghị đồng chí mang theo Giấy báo này và có mặt tại Trụ sở Chính Sở Cảnh Sát (LSPD) theo lịch thông báo để nhận quân trang và bắt đầu kỳ huấn luyện đặc biệt.
+                                    </p>
+                                </div>
+
+                                <!-- Chữ ký -->
+                                <div class="mt-20 flex justify-between items-end text-center pb-6">
+                                    <div class="w-1/3 flex flex-col items-center">
+                                        <p class="font-bold uppercase text-sm mb-2 text-slate-800">Giám đốc Sở Cảnh Sát</p>
+                                        <div id="sigDirectorContainer" class="h-24 flex items-center justify-center">
+                                            <p class="signature-font text-slate-400 italic">Chưa có chữ ký</p>
+                                        </div>
+                                        <p class="font-bold mt-2 text-lg text-blue-900" id="displayDirectorName">Chief Of Police</p>
+                                    </div>
+                                    
+                                    <div class="w-1/3 relative flex flex-col items-center">
+                                        <div class="stamp">HỌC VIỆN<br>CẢNH SÁT<br>LOS SANTOS</div>
+                                        <p class="font-bold uppercase text-sm mb-2 text-slate-800">Hội đồng Tuyển Sinh</p>
+                                        <div class="h-24 flex items-center justify-center">
+                                            <p class="signature-font text-red-700">L.S.P.D</p>
+                                        </div>
+                                        <p class="font-bold mt-2 text-lg text-blue-900">High Command</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content border border-yellow-500/30">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-lock text-yellow-400"></i> Đăng Nhập Quản Trị
+                </h3>
+                <button id="closeLoginBtn" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="adminEmail" class="form-input" required placeholder="admin@lspd.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Mật khẩu</label>
+                    <input type="password" id="adminPassword" class="form-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" class="text-red-400 text-sm hidden">Sai email hoặc mật khẩu!</div>
+                <button type="submit" id="submitLoginBtn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-yellow-600/20 mt-4">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+            authDomain: "alook-26a1f.firebaseapp.com",
+            projectId: "alook-26a1f",
+            storageBucket: "alook-26a1f.appspot.com",
+            messagingSenderId: "201575321450",
+            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const collectionName = "academy_students";
+        let isAdmin = false;
+        let allStudents = [];
+
+        // --- Cập nhật ngày tháng trên Giấy báo ---
+        const now = new Date();
+        document.getElementById('currentDay').innerText = String(now.getDate()).padStart(2, '0');
+        document.getElementById('currentMonth').innerText = String(now.getMonth() + 1).padStart(2, '0');
+        document.getElementById('currentYear').innerText = now.getFullYear();
+
+        // --- Xử lý tải ảnh Logo & Chữ ký ---
+        function handleImageUpload(inputId, containerId, className, isWatermark = false) {
+            document.getElementById(inputId).addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    if(file.size > 2 * 1024 * 1024) { alert("File quá lớn. Vui lòng chọn ảnh < 2MB."); this.value = ''; return; }
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const imgSrc = event.target.result;
+                        // Gắn vào container
+                        const img = document.createElement('img');
+                        img.src = imgSrc;
+                        img.className = className;
+                        if(className.includes('signature-img')) img.style.mixBlendMode = 'multiply';
+                        
+                        const container = document.getElementById(containerId);
+                        container.innerHTML = '';
+                        container.appendChild(img);
+
+                        // Gắn chung cho Watermark nếu là Logo
+                        if(isWatermark) {
+                            document.getElementById('watermarkImg').src = imgSrc;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        handleImageUpload('inputLogo', 'logoContainer', 'logo-preview drop-shadow-md', true);
+        handleImageUpload('inputSigDirector', 'sigDirectorContainer', 'signature-img opacity-90');
+
+        // --- Cập nhật View Form ---
+        document.getElementById('previewBtn').addEventListener('click', () => {
+            const name = document.getElementById('inputName').value.trim();
+            const phone = document.getElementById('inputPhone').value.trim();
+            const cid = document.getElementById('inputCID').value.trim();
+            const callsign = document.getElementById('inputCallsign').value.trim();
+            const decision = document.getElementById('inputDecision').value.trim();
+            const director = document.getElementById('inputDirectorName').value.trim();
+
+            if (name) document.getElementById('displayName').innerText = name.toUpperCase();
+            if (phone) document.getElementById('displayPhone').innerText = phone;
+            if (cid) document.getElementById('displayCID').innerText = cid;
+            if (callsign) document.getElementById('displayCallsign').innerText = callsign;
+            if (decision) document.getElementById('displayDecision').innerText = decision;
+            if (director) document.getElementById('displayDirectorName').innerText = director;
+        });
+
+        // --- Lưu Dữ Liệu & Xuất Ảnh (Admin) ---
+        document.getElementById('saveAndExportBtn').addEventListener('click', async () => {
+            const name = document.getElementById('inputName').value.trim();
+            const cid = document.getElementById('inputCID').value.trim();
+            const callsign = document.getElementById('inputCallsign').value.trim();
+            
+            if(!name || !cid) { alert("Vui lòng nhập ít nhất Họ tên và CID để lưu vào danh sách."); return; }
+
+            // 1. Cập nhật Preview trước khi chụp
+            document.getElementById('previewBtn').click();
+            const btn = document.getElementById('saveAndExportBtn');
+            const origHTML = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...';
+
+            try {
+                // 2. Lưu vào DB Firebase
+                await addDoc(collection(db, collectionName), {
+                    name: name,
+                    cid: cid,
+                    callsign: callsign,
+                    status: 'Trúng Tuyển',
+                    createdAt: serverTimestamp()
+                });
+
+                // 3. Xuất ảnh html2canvas
+                const element = document.getElementById('certificate');
+                const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+                const image = canvas.toDataURL("image/png");
+                
+                const link = document.createElement('a');
+                link.download = `LSPD-GiayBao-${name.replace(/\s+/g, '_')}.png`;
+                link.href = image;
+                link.click();
+                
+                // Clear inputs
+                document.getElementById('inputName').value = '';
+                document.getElementById('inputPhone').value = '';
+                document.getElementById('inputCID').value = '';
+                document.getElementById('inputCallsign').value = '';
+                
+            } catch (error) {
+                console.error("Lỗi:", error); alert("Có lỗi xảy ra. Vui lòng thử lại.");
+            } finally {
+                btn.disabled = false; btn.innerHTML = origHTML;
+            }
+        });
+
+
+        // --- Phân quyền Firebase ---
+        onAuthStateChanged(auth, (user) => {
+            const loginToggleBtn = document.getElementById('loginToggleBtn');
+            if (user && !user.isAnonymous) {
+                isAdmin = true;
+                document.body.classList.add('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-unlock"></i> Đăng xuất`;
+                loginToggleBtn.classList.replace('text-yellow-500', 'text-red-400');
+                loginToggleBtn.classList.replace('border-yellow-500/20', 'border-red-400/30');
+                loginToggleBtn.classList.replace('bg-yellow-500/10', 'bg-red-400/10');
+            } else {
+                isAdmin = false;
+                document.body.classList.remove('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-lock"></i> Đăng nhập Admin`;
+                loginToggleBtn.classList.replace('text-red-400', 'text-yellow-500');
+                loginToggleBtn.classList.replace('border-red-400/30', 'border-yellow-500/20');
+                loginToggleBtn.classList.replace('bg-red-400/10', 'bg-yellow-500/10');
+                if(!user) signInAnonymously(auth).catch(console.error);
+            }
+            adjustLayout();
+            listenForStudents(); 
+        });
+
+        // Điều chỉnh Grid dựa trên Quyền
+        const listSection = document.getElementById('listSection');
+        function adjustLayout() {
+            if (isAdmin) {
+                listSection.classList.remove('xl:w-full');
+                listSection.classList.add('xl:w-2/5');
+            } else {
+                listSection.classList.remove('xl:w-2/5');
+                listSection.classList.add('xl:w-full');
+            }
+        }
+
+        // --- Đăng nhập Modal ---
+        const loginModal = document.getElementById('loginModal');
+        document.getElementById('loginToggleBtn').addEventListener('click', () => {
+            if (isAdmin) signOut(auth); else loginModal.classList.add('active');
+        });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => loginModal.classList.remove('active'));
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitLoginBtn');
+            const errorText = document.getElementById('loginError');
+            btn.disabled = true; btn.innerText = "Đang kiểm tra..."; errorText.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
+                loginModal.classList.remove('active'); document.getElementById('loginForm').reset();
+            } catch (error) { errorText.classList.remove('hidden'); } 
+            finally { btn.disabled = false; btn.innerText = "Đăng Nhập"; }
+        });
+
+        // --- Lắng nghe Data (Danh Sách Học Viên) ---
+        const studentsList = document.getElementById('studentsList');
+        const recordCount = document.getElementById('recordCount');
+        const searchInput = document.getElementById('searchInput');
+
+        function listenForStudents() {
+            const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
+            onSnapshot(q, (querySnapshot) => {
+                allStudents = [];
+                querySnapshot.forEach(doc => allStudents.push({ id: doc.id, ...doc.data() }));
+                renderStudents();
+            });
+        }
+
+        function renderStudents() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filtered = allStudents.filter(s => (s.name || '').toLowerCase().includes(searchTerm) || (s.cid || '').toLowerCase().includes(searchTerm));
+            
+            studentsList.innerHTML = '';
+            recordCount.innerText = `${filtered.length} Học viên`;
+
+            if(filtered.length === 0) {
+                studentsList.innerHTML = `<div class="text-center py-10 text-slate-500"><i class="fas fa-users-slash text-3xl mb-3 opacity-50"></i><p>Không có học viên nào.</p></div>`;
+                return;
+            }
+
+            filtered.forEach((student, index) => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-800/80 border border-slate-700/80 rounded-lg p-3 flex justify-between items-center group shadow-md transition hover:bg-slate-700/80';
+                
+                const deleteBtnHTML = isAdmin ? `<button data-id="${student.id}" class="delete-btn p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition z-10"><i class="fas fa-trash pointer-events-none"></i></button>` : '';
+                const initial = student.name ? student.name.charAt(0).toUpperCase() : '?';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-10 h-10 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold shrink-0">${initial}</div>
+                        <div class="truncate">
+                            <h4 class="font-bold text-white text-[15px] truncate">${student.name}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">CID: <span class="text-blue-300">${student.cid}</span> | ${student.callsign ? `Callsign: <span class="text-amber-300">${student.callsign}</span>` : ''}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="badge status-pass"><i class="fas fa-check-circle mr-1"></i>Trúng Tuyển</span>
+                        ${deleteBtnHTML}
+                    </div>
+                `;
+                studentsList.appendChild(item);
+            });
+        }
+
+        searchInput.addEventListener('input', renderStudents);
+
+        // Xóa Sinh Viên (Admin)
+        studentsList.addEventListener('click', async (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if(deleteBtn && isAdmin) {
+                const id = deleteBtn.getAttribute('data-id');
+                if(confirm("Xóa học viên này khỏi danh sách?")) {
+                    await deleteDoc(doc(db, collectionName, id)).catch(err => alert("Lỗi xóa!"));
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>

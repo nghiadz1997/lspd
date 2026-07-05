@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trang Quản Lý Chung - LSPD</title>
+    
+    <!-- Mạng phân phối nội dung Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Cấu hình Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+        }
+
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        /* Input Fields */
+        .form-input, .form-select {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        /* Navigation Links */
+        .nav-link {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            color: #94a3b8;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .nav-link:hover {
+            color: #f8fafc;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .nav-link.active {
+            color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Modal Animation & Styling */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 100;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            transform: scale(0.95) translateY(10px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0;
+        }
+        .modal-overlay.active .modal-content { 
+            transform: scale(1) translateY(0); 
+            opacity: 1;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.625rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+        .badge-active { background-color: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+        .badge-resigned { background-color: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+        .badge-leave { background-color: rgba(245, 158, 11, 0.1); color: #fbbf24; border-color: rgba(245, 158, 11, 0.2); }
+
+        /* Admin Controls - Ẩn đi khi không phải Admin */
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only-flex { display: flex !important; }
+        body.is-admin .admin-only-cell { display: table-cell !important; }
+        body.is-admin .admin-only-block { display: block !important; }
+    </style>
+</head>
+<body class="p-4 md:p-6 lg:p-8 antialiased selection:bg-blue-500/30">
+
+    <div class="max-w-[1600px] mx-auto space-y-6">
+        
+        <!-- Header & Navigation -->
+        <div class="glass-panel p-4 md:p-5 flex flex-col xl:flex-row justify-between items-center gap-6">
+            
+            <div class="flex items-center gap-4 w-full xl:w-auto shrink-0">
+                <div class="p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner">
+                    <img src="/img/logo xanh.png" 
+                         alt="LSPD Logo" class="h-10 w-auto object-contain"/>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-blue-200">Trang Quản Lý Nội Bộ</h1>
+                    <p class="text-xs text-slate-400 font-medium tracking-wide uppercase mt-0.5">Los Santos Police Dept.</p>
+                </div>
+            </div>
+
+            <nav class="flex flex-wrap items-center justify-center xl:justify-end gap-1.5 w-full text-sm">
+                <a href="#" class="nav-link active">Danh Sách NV</a>
+                <a href="/nhansu/luong.html" class="nav-link">Lương</a>
+                <a href="/nhansu/nghiphep.html" class="nav-link">Nghỉ Phép</a>
+                <a href="/nhansu/kyluat.html" class="nav-link">Kỷ Luật</a>
+                <a href="/nhansu/nghiviec.html" class="nav-link">Nghỉ Việc</a>
+                <a href="/nhansu/thangchuc.html" class="nav-link">Thăng Chức</a>
+                <a href="/nhansu/quanlyca.html" class="nav-link">Quản Lý Ca Trực</a>
+                <a href="/nhansu/hocvien.html" class="nav-link">Học Viện</a>
+                
+                
+                <!-- Dropdown mô phỏng cho các mục còn lại để tiết kiệm không gian -->
+                <div class="relative group">
+                    <button class="nav-link flex items-center gap-1">
+                        Thêm <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      
+                        
+                    </div>
+                </div>
+                
+                <!-- Nút Đăng nhập Admin -->
+                <button id="loginToggleBtn" class="nav-link flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-semibold ml-2 border border-yellow-500/30">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    Admin
+                </button>
+            </nav>
+        </div>
+
+        <!-- Main Content (Danh sách Sĩ quan) -->
+        <div class="glass-panel overflow-hidden flex flex-col">
+            
+            <!-- Toolbar -->
+            <div class="p-5 border-b border-slate-700/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-800/30">
+                <div class="relative w-full sm:w-72">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="searchInput" class="form-input pl-10 bg-slate-800/50 border-slate-600 focus:bg-slate-800" placeholder="Tìm theo Tên hoặc UID..."/>
+                </div>
+                
+                <!-- Add Button (Bị ẩn khi không có quyền Admin) -->
+                <button id="addOfficerBtn" class="admin-only admin-only-flex w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 border border-blue-400/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Thêm Sĩ Quan
+                </button>
+            </div>
+
+            <!-- Bảng Dữ Liệu -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs text-slate-300 uppercase bg-slate-900/50 border-b border-slate-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 font-semibold w-16 text-center">STT</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Sĩ Quan</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">UID</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Cấp Bậc</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Chức Vụ</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Đơn Vị</th>
+                            <th scope="col" class="px-6 py-4 font-semibold text-center">Trạng Thái</th>
+                            <th scope="col" class="px-6 py-4 font-semibold text-center w-24 admin-only admin-only-cell">Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rosterTableBody" class="divide-y divide-slate-700/50 text-slate-300">
+                        <!-- Loading State -->
+                        <tr>
+                            <td colspan="8" class="px-6 py-12 text-center">
+                                <svg class="animate-spin h-8 w-8 text-blue-500 mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span class="text-slate-400">Đang tải dữ liệu nhân sự...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Footer đếm tổng -->
+            <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 text-xs text-slate-400 flex justify-between items-center">
+                <span>Cập nhật theo thời gian thực từ máy chủ LSPD</span>
+                <span id="totalCount">Tổng: 0 sĩ quan</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Thêm Sĩ Quan -->
+    <div id="addOfficerModal" class="modal-overlay">
+        <div class="glass-panel p-0 w-full max-w-lg modal-content overflow-hidden border border-slate-600">
+            <div class="px-6 py-4 border-b border-slate-700/80 bg-slate-800/50 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+                    Bổ Sung Hồ Sơ Mới
+                </h2>
+                <button id="closeModalIcon" class="text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="officerForm" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Tên Sĩ Quan</label>
+                        <input type="text" id="officerName" class="form-input" placeholder="VD: John Doe" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Mã Định Danh (UID)</label>
+                        <input type="text" id="officerUID" class="form-input" placeholder="UID..." required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Cấp Bậc</label>
+                        <select id="officerRank" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Chức Vụ</label>
+                        <select id="officerPosition" class="form-select" required></select>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Đơn Vị Công Tác</label>
+                        <select id="officerUnit" class="form-select" required></select>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-4 mt-6 border-t border-slate-700/80">
+                    <button type="button" id="closeModalBtn" class="flex-1 bg-transparent border border-slate-600 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg transition-colors">Hủy Bỏ</button>
+                    <button type="submit" id="submitOfficerBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-lg shadow-blue-500/20">Lưu Hồ Sơ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Delete Modal -->
+    <div id="deleteConfirmModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content text-center border border-red-500/30">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-500/10 mb-4 border border-red-500/20">
+                <svg class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Xóa hồ sơ này?</h3>
+            <p class="text-sm text-slate-400 mb-6">Bạn có chắc chắn muốn xóa vĩnh viễn sĩ quan này khỏi danh sách? Thao tác này không thể hoàn tác.</p>
+            
+            <div class="flex gap-3">
+                <button id="cancelDeleteBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">Hủy</button>
+                <button id="confirmDeleteBtn" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-4 rounded-lg transition-colors shadow-lg shadow-red-500/20">Xóa Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content border border-yellow-500/30">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    Đăng Nhập Quản Trị
+                </h3>
+                <button id="closeLoginBtn" class="text-slate-400 hover:text-white"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="adminEmail" class="form-input" required placeholder="admin@lspd.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Mật khẩu</label>
+                    <input type="password" id="adminPassword" class="form-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" class="text-red-400 text-sm hidden">Sai email hoặc mật khẩu!</div>
+                <button type="submit" id="submitLoginBtn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-yellow-600/20 mt-4">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Config (Giữ nguyên cấu hình ban đầu của bạn)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+            authDomain: "alook-26a1f.firebaseapp.com",
+            projectId: "alook-26a1f",
+            storageBucket: "alook-26a1f.appspot.com",
+            messagingSenderId: "201575321450",
+            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Trạng thái hệ thống
+        let allStaff = [];
+        let documentToDeleteId = null; 
+        let isAdmin = false; // Biến phân quyền
+        const collectionName = "lspd_roster";
+
+        // Khởi tạo Auth & Theo dõi Đăng Nhập
+        onAuthStateChanged(auth, (user) => {
+            const loginToggleBtn = document.getElementById('loginToggleBtn');
+            if (user) {
+                if (!user.isAnonymous) {
+                    isAdmin = true;
+                    document.body.classList.add('is-admin');
+                    loginToggleBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg> Đăng xuất`;
+                    loginToggleBtn.classList.replace('text-yellow-500', 'text-red-400');
+                    loginToggleBtn.classList.replace('border-yellow-500/30', 'border-red-400/30');
+                } else {
+                    isAdmin = false;
+                    document.body.classList.remove('is-admin');
+                    loginToggleBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> Admin`;
+                    loginToggleBtn.classList.replace('text-red-400', 'text-yellow-500');
+                    loginToggleBtn.classList.replace('border-red-400/30', 'border-yellow-500/30');
+                }
+                listenForRoster(); // Load lại bảng khi đổi trạng thái
+            } else {
+                signInAnonymously(auth).catch((error) => console.error("Lỗi đăng nhập ẩn danh:", error));
+            }
+        });
+
+        // Xử lý Modal Đăng nhập / Đăng xuất
+        const loginModal = document.getElementById('loginModal');
+        document.getElementById('loginToggleBtn').addEventListener('click', () => {
+            if (isAdmin) {
+                signOut(auth);
+            } else {
+                loginModal.classList.add('active');
+            }
+        });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => loginModal.classList.remove('active'));
+        loginModal.addEventListener('click', (e) => { if(e.target === loginModal) loginModal.classList.remove('active'); });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitLoginBtn');
+            const errorText = document.getElementById('loginError');
+            btn.disabled = true; btn.innerText = "Đang kiểm tra...";
+            errorText.classList.add('hidden');
+            
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
+                loginModal.classList.remove('active');
+                document.getElementById('loginForm').reset();
+            } catch (error) {
+                errorText.classList.remove('hidden');
+                console.error("Lỗi đăng nhập:", error);
+            } finally {
+                btn.disabled = false; btn.innerText = "Đăng Nhập";
+            }
+        });
+
+        // --- Cấu hình DOM Elements ---
+        const tableBody = document.getElementById('rosterTableBody');
+        const searchInput = document.getElementById('searchInput');
+        const totalCountSpan = document.getElementById('totalCount');
+        
+        // Modals
+        const addModal = document.getElementById('addOfficerModal');
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        const officerForm = document.getElementById('officerForm');
+        
+        // Buttons
+        const addOfficerBtn = document.getElementById('addOfficerBtn');
+        const submitOfficerBtn = document.getElementById('submitOfficerBtn');
+        
+        // Cấu hình Dữ liệu Select
+        const rankSelect = document.getElementById('officerRank');
+        const positionSelect = document.getElementById('officerPosition');
+        const unitSelect = document.getElementById('officerUnit');
+
+        const ranks = [
+            "Chief of Police", "Assistant Chief", "Deputy Chief", "Commander", 
+            "Captain", "Lieutenant", "Sergeant", "Detective", 
+            "Corporal", "Senior Officer", "Police Officer I", "Police Academy"
+        ];
+        
+        const positions = [
+            "High High Command", "High Command", "Supervisor", "Patrol Officer"
+        ];
+        
+        const units = [
+            "Air Corps", "Field Training Officer", "Special Weapons And Tactics", 
+            "Suspect Investigation Unit"
+        ];
+        
+        // Đổ Options
+        const populateSelect = (el, arr, placeholder) => {
+            el.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+            arr.forEach(item => el.add(new Option(item, item)));
+        };
+        populateSelect(rankSelect, ranks, "-- Chọn Cấp Bậc --");
+        populateSelect(positionSelect, positions, "-- Chọn Chức Vụ --");
+        populateSelect(unitSelect, units, "-- Chọn Đơn Vị --");
+
+        // --- Logic Hiển Thị Modals (Add Officer) ---
+        const closeAddModal = () => addModal.classList.remove('active');
+        addOfficerBtn.addEventListener('click', () => addModal.classList.add('active'));
+        document.getElementById('closeModalBtn').addEventListener('click', closeAddModal);
+        document.getElementById('closeModalIcon').addEventListener('click', closeAddModal);
+        addModal.addEventListener('click', (e) => { if (e.target === addModal) closeAddModal(); });
+
+        // --- Xử lý Submit Form Thêm Mới ---
+        officerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const originalText = submitOfficerBtn.innerText;
+            submitOfficerBtn.disabled = true;
+            submitOfficerBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang lưu...';
+
+            try {
+                await addDoc(collection(db, collectionName), {
+                    name: document.getElementById('officerName').value.trim(),
+                    uid: document.getElementById('officerUID').value.trim(),
+                    rank: rankSelect.value,
+                    position: positionSelect.value,
+                    unit: unitSelect.value,
+                    status: 'Còn làm việc',
+                    createdAt: serverTimestamp()
+                });
+                officerForm.reset();
+                closeAddModal();
+            } catch (error) { 
+                console.error("Lỗi khi thêm sĩ quan: ", error); 
+                alert("Có lỗi xảy ra khi lưu! Vui lòng thử lại.");
+            } finally {
+                submitOfficerBtn.disabled = false;
+                submitOfficerBtn.innerText = originalText;
+            }
+        });
+
+        // --- Lấy dữ liệu Realtime ---
+        function listenForRoster() {
+            const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
+            onSnapshot(q, (querySnapshot) => {
+                allStaff = [];
+                querySnapshot.forEach((doc) => allStaff.push({ id: doc.id, ...doc.data() }));
+                
+                // Khôi phục filter nếu đang search
+                const searchTerm = searchInput.value.toLowerCase();
+                const filtered = searchTerm ? allStaff.filter(i => i.name.toLowerCase().includes(searchTerm) || i.uid.toLowerCase().includes(searchTerm)) : allStaff;
+                renderTable(filtered);
+                totalCountSpan.innerText = `Tổng: ${allStaff.length} sĩ quan`;
+            }, (error) => {
+                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-red-400">Lỗi kết nối cơ sở dữ liệu.</td></tr>`;
+            });
+        }
+        
+        // --- Render Bảng ---
+        function renderTable(staffList) {
+            tableBody.innerHTML = '';
+            
+            if (staffList.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-16 text-center">
+                            <svg class="w-12 h-12 text-slate-500 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                            <p class="text-slate-400 font-medium">Chưa có hồ sơ nhân sự nào.</p>
+                            <p class="text-sm text-slate-500 mt-1">Danh sách hiện đang trống hoặc không tìm thấy kết quả.</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            staffList.forEach((staff, index) => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-slate-700/50 hover:bg-slate-800/40 transition-colors group';
+                
+                let statusClass = 'badge-active';
+                if (staff.status === 'Đã Nghỉ Việc') statusClass = 'badge-resigned';
+                if (staff.status === 'Xin Nghỉ Phép') statusClass = 'badge-leave';
+
+                // Lấy chữ cái đầu làm Avatar
+                const initial = staff.name ? staff.name.charAt(0).toUpperCase() : '?';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-center text-slate-500 font-medium">${index + 1}</td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-xs shrink-0">${initial}</div>
+                            <span class="font-semibold text-white whitespace-nowrap">${staff.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-mono text-slate-400 text-xs">${staff.uid}</td>
+                    <td class="px-6 py-4 text-slate-300 font-medium whitespace-nowrap">${staff.rank}</td>
+                    <td class="px-6 py-4 text-slate-300 whitespace-nowrap">${staff.position}</td>
+                    <td class="px-6 py-4"><span class="bg-slate-800/80 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-md text-xs whitespace-nowrap">${staff.unit}</span></td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="badge ${statusClass}">
+                            <span class="w-1.5 h-1.5 rounded-full bg-current mr-1.5"></span>
+                            ${staff.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-center admin-only admin-only-cell">
+                        <button data-id="${staff.id}" class="delete-btn inline-flex items-center justify-center p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-400/10 transition-colors" title="Xóa hồ sơ">
+                            <svg class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // --- Xử lý logic xóa (Modal thay vì Confirm mặc định) ---
+        tableBody.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (deleteBtn) {
+                documentToDeleteId = deleteBtn.getAttribute('data-id');
+                deleteConfirmModal.classList.add('active');
+            }
+        });
+
+        const closeDeleteModal = () => {
+            deleteConfirmModal.classList.remove('active');
+            documentToDeleteId = null;
+        };
+        
+        document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+        deleteConfirmModal.addEventListener('click', (e) => { if (e.target === deleteConfirmModal) closeDeleteModal(); });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async (e) => {
+            if (!documentToDeleteId) return;
+            const btn = e.target;
+            const originalText = btn.innerText;
+            btn.disabled = true; btn.innerText = 'Đang xóa...';
+            
+            try { 
+                await deleteDoc(doc(db, collectionName, documentToDeleteId)); 
+                closeDeleteModal();
+            } 
+            catch (error) { 
+                console.error("Lỗi khi xóa: ", error); 
+                alert("Không thể xóa hồ sơ lúc này!");
+            }
+            finally {
+                btn.disabled = false; btn.innerText = originalText;
+            }
+        });
+
+        // --- Xử lý Tìm kiếm Local ---
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredStaff = allStaff.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || item.uid.toLowerCase().includes(searchTerm)
+            );
+            renderTable(filteredStaff);
+        });
+    </script>
+</body>
+</html>

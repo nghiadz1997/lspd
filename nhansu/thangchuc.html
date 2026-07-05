@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quyết Định Thăng Chức - LSPD</title>
+    
+    <!-- Mạng phân phối nội dung Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        montserrat: ['Montserrat', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+        }
+
+        .paper-panel {
+            background-color: #f8fafc;
+            color: #1e293b;
+            border-radius: 0.75rem;
+            box-shadow: 0 20px 50px -12px rgba(0,0,0,0.7);
+            position: relative;
+        }
+
+        /* Watermark Ẩn dưới trang giấy */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+        }
+
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        /* Input Fields for Paper */
+        .paper-input {
+            border: none;
+            border-bottom: 1px dashed #94a3b8;
+            background: transparent;
+            width: 100%;
+            padding: 4px 0;
+            color: #0f172a;
+            font-weight: 600;
+            transition: all 0.2s;
+            position: relative;
+            z-index: 10;
+        }
+        .paper-input:focus {
+            outline: none;
+            border-bottom-color: #fbbf24;
+            border-bottom-style: solid;
+        }
+        .paper-textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            background: rgba(255,255,255,0.5);
+            color: #0f172a;
+            resize: vertical;
+            min-height: 80px;
+            position: relative;
+            z-index: 10;
+        }
+        .paper-textarea:focus {
+            outline: none;
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.2);
+        }
+
+        /* Cấu hình file upload */
+        input[type="file"]::file-selector-button {
+            border: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            color: #334155;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-right: 10px;
+        }
+        input[type="file"]::file-selector-button:hover { background: #e2e8f0; }
+
+        .form-input {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(2, 6, 23, 0.85);
+            backdrop-filter: blur(10px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 100;
+            padding: 1rem;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            transform: scale(0.95) translateY(10px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.active .modal-content { 
+            transform: scale(1) translateY(0); 
+            opacity: 1;
+        }
+
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only-block { display: block !important; }
+        body.is-admin .admin-only-flex { display: flex !important; }
+    </style>
+</head>
+<body class="antialiased selection:bg-amber-500/30">
+
+    <div class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+            <div class="flex items-center gap-4">
+                <a href="/trangchu.html" class="relative p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 transition-colors cursor-pointer block">
+                    <img src="/img/logo xanh.png" 
+                         alt="LSPD Logo" class="h-12 w-auto object-contain drop-shadow-lg"/>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-300 to-yellow-500 tracking-tight">
+                        HỆ THỐNG THĂNG CHỨC
+                    </h1>
+                    <p class="text-sm text-slate-400 font-medium tracking-widest uppercase mt-1">Los Santos Police Department</p>
+                </div>
+            </div>
+
+            <button id="loginToggleBtn" class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition cursor-pointer shadow-lg shadow-yellow-500/5">
+                <i class="fas fa-lock"></i> Đăng nhập Admin
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <div class="lg:col-span-7 admin-only admin-only-block" id="adminFormSection">
+                <div class="paper-panel p-6 sm:p-10 border-t-8 border-yellow-500">
+                    <!-- Watermark -->
+                    <img src="/img/logo xanh.png" class="watermark" alt="Watermark">
+
+                    <div class="text-center border-b border-slate-300 pb-6 mb-6 relative z-10">
+                        <img src="/img/logo xanh.png" 
+                             alt="LSPD" class="h-16 mx-auto mb-3 opacity-90 drop-shadow-md">
+                        <h2 class="font-montserrat font-extrabold text-2xl uppercase tracking-wider text-slate-900">Quyết Định Thăng Chức</h2>
+                        <div class="text-slate-600 text-sm mt-2 flex justify-center items-center gap-2">
+                            <span class="font-medium">Los Santos,</span>
+                            <input type="text" id="decisionDate" class="paper-input text-center w-48 text-sm" value="Ngày ... Tháng ... Năm ...">
+                        </div>
+                    </div>
+
+                    <form id="promotionForm" class="space-y-6 relative z-10">
+                        <div class="space-y-4 text-[15px]">
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="font-bold text-slate-800 whitespace-nowrap min-w-[150px]">Tên Sĩ Quan:</label>
+                                <input type="text" id="officerName" class="paper-input flex-1" placeholder="Nhập tên người được thăng chức..." required>
+                            </div>
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                <label class="font-bold text-slate-800 whitespace-nowrap min-w-[150px]">Số Hiệu UID:</label>
+                                <input type="text" id="officerUID" class="paper-input flex-1" placeholder="UID..." required>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div class="bg-slate-100 p-3 rounded border border-slate-200">
+                                    <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">Quân Hàm Cũ</label>
+                                    <input type="text" id="oldRank" class="paper-input w-full" placeholder="VD: Police Officer I" required>
+                                </div>
+                                <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                                    <label class="block text-xs font-bold text-yellow-600 mb-1 uppercase">Quân Hàm Mới</label>
+                                    <input type="text" id="newRank" class="paper-input w-full text-yellow-700 font-bold" placeholder="VD: Senior Officer" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="font-montserrat font-bold text-lg text-slate-900 mb-2 mt-6">Lý do Thăng Cấp:</h3>
+                            <textarea id="reason" class="paper-textarea" placeholder="Nêu rõ thành tích, đóng góp, hoặc lý do bổ nhiệm..." required></textarea>
+                        </div>
+
+                        <!-- Chữ ký Tùy Chọn -->
+                        <div class="border-2 border-dashed border-slate-300 p-4 rounded-lg bg-white/50 mt-6">
+                            <h3 class="font-bold text-slate-800 mb-3 text-sm uppercase"><i class="fas fa-file-signature mr-2"></i>Thiết lập Chữ Ký Ban Hành</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Tải lên hình ảnh chữ ký</label>
+                                    <input type="file" id="signatureFile" accept="image/*" class="w-full text-sm text-slate-600">
+                                    <div class="mt-2 h-16 flex items-center">
+                                        <img id="signaturePreview" class="max-h-full hidden mix-blend-multiply opacity-80" alt="Preview">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Họ tên / Chức vụ người ký</label>
+                                    <input type="text" id="signerName" class="paper-input text-center" placeholder="VD: Chief Of Police" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center mt-10 pt-6">
+                            <button type="submit" id="submitBtn" class="bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 px-10 rounded-lg transition-colors shadow-xl shadow-amber-600/30 w-full sm:w-auto text-lg">
+                                <i class="fas fa-stamp mr-2"></i> BAN HÀNH QUYẾT ĐỊNH
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-12" id="listSection">
+                <div class="glass-panel overflow-hidden h-full flex flex-col border-t-4 border-t-amber-500 shadow-2xl">
+                    <div class="p-5 border-b border-slate-700/50 bg-slate-800/80 flex justify-between items-center">
+                        <div>
+                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fas fa-medal text-amber-400"></i> Lịch Sử Thăng Cấp LSPD
+                            </h2>
+                            <p class="text-xs text-slate-400 mt-1">Lịch sử quyết định đã ban hành. Click để xem chi tiết văn bản.</p>
+                        </div>
+                        <span id="recordCount" class="bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-medium">0 hồ sơ</span>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto max-h-[800px] p-4 space-y-3" id="saved-decisions-list">
+                        <div class="text-center py-10 text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                            <p>Đang tải hồ sơ...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Modal Xem Văn Bản -->
+    <div id="documentViewModal" class="modal-overlay">
+        <!-- Khung giấy trắng y hệt Form -->
+        <div class="paper-panel p-6 sm:p-12 w-full max-w-3xl modal-content relative border-t-8 border-yellow-500">
+            <!-- Nút đóng -->
+            <button id="closeDocBtn" class="absolute top-4 right-4 text-slate-400 hover:text-red-600 transition z-30 p-2 bg-slate-100 rounded-full w-10 h-10 flex justify-center items-center shadow-md">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <!-- Watermark -->
+            <img src="/img/logo xanh.png" class="watermark" alt="Watermark">
+
+            <div class="relative z-10">
+                <div class="text-center border-b border-slate-300 pb-6 mb-8">
+                    <img src="/img/logo xanh.png" 
+                            alt="LSPD" class="h-16 mx-auto mb-3 opacity-90 drop-shadow">
+                    <h2 class="font-montserrat font-extrabold text-2xl uppercase tracking-wider text-slate-900">Quyết Định Thăng Chức</h2>
+                    <p class="text-slate-600 text-sm mt-2 italic" id="viewDate">Los Santos, Ngày ...</p>
+                </div>
+
+                <div class="space-y-3 text-base text-slate-800">
+                    <p><span class="font-bold min-w-[150px] inline-block">Tên Sĩ Quan:</span> <span id="viewName" class="font-semibold text-amber-600 uppercase"></span></p>
+                    <p><span class="font-bold min-w-[150px] inline-block">Số Hiệu Callsign:</span> <span id="viewUID"></span></p>
+                </div>
+
+                <div class="flex items-center justify-center gap-6 my-8 p-6 bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
+                    <div class="text-center">
+                        <p class="text-xs text-slate-500 font-bold mb-1 uppercase">Quân Hàm Cũ</p>
+                        <p class="text-lg font-semibold text-slate-700" id="viewOldRank">---</p>
+                    </div>
+                    <i class="fas fa-arrow-right text-2xl text-amber-400"></i>
+                    <div class="text-center">
+                        <p class="text-xs text-amber-600 font-bold mb-1 uppercase">Quân Hàm Mới</p>
+                        <p class="text-xl font-bold text-amber-600" id="viewNewRank">---</p>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="font-montserrat font-bold text-lg text-slate-900 mb-2">Lý do Thăng Cấp:</h3>
+                    <div class="bg-white/50 p-4 border border-slate-200 rounded text-slate-800 whitespace-pre-wrap leading-relaxed shadow-inner" id="viewReason"></div>
+                </div>
+
+                <div class="mt-12 flex justify-end">
+                    <div class="text-center w-64">
+                        <p class="font-bold text-slate-800 text-sm mb-4">NGƯỜI RA QUYẾT ĐỊNH</p>
+                        <div class="h-20 flex justify-center items-center mb-2">
+                            <img id="viewSignatureImg" class="max-h-full mix-blend-multiply opacity-90 hidden" src="" alt="Chữ ký">
+                        </div>
+                        <div class="w-full border-b-2 border-slate-400 mx-auto my-1"></div>
+                        <p class="font-bold text-slate-900 mt-2 uppercase" id="viewSignerName">Chưa Rõ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content border border-yellow-500/30">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-lock text-yellow-400"></i> Đăng Nhập Quản Trị
+                </h3>
+                <button id="closeLoginBtn" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="adminEmail" class="form-input" required placeholder="admin@lspd.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Mật khẩu</label>
+                    <input type="password" id="adminPassword" class="form-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" class="text-red-400 text-sm hidden">Sai email hoặc mật khẩu!</div>
+                <button type="submit" id="submitLoginBtn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-yellow-600/20 mt-4">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Thông Báo Custom -->
+    <div id="alertModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content text-center">
+            <div id="alertIconContainer" class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4">
+                <i id="alertIcon" class="fas fa-info-circle text-2xl"></i>
+            </div>
+            <h3 id="alertTitle" class="text-lg font-bold text-white mb-2">Thông báo</h3>
+            <p id="alertMessage" class="text-sm text-slate-400 mb-6">Nội dung thông báo.</p>
+            <div id="alertActions" class="flex gap-3 justify-center">
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, deleteDoc, serverTimestamp, collection, onSnapshot, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+            authDomain: "alook-26a1f.firebaseapp.com",
+            projectId: "alook-26a1f",
+            storageBucket: "alook-26a1f.appspot.com",
+            messagingSenderId: "201575321450",
+            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const collectionName = "promotions";
+        let isAdmin = false;
+        let idToDelete = null;
+        let allDecisions = []; 
+
+        // --- Hệ thống Custom Alert ---
+        const alertModal = document.getElementById('alertModal');
+        const alertTitle = document.getElementById('alertTitle');
+        const alertMessage = document.getElementById('alertMessage');
+        const alertIcon = document.getElementById('alertIcon');
+        const alertIconContainer = document.getElementById('alertIconContainer');
+        const alertActions = document.getElementById('alertActions');
+
+        function showAlert(type, title, message, onConfirm = null) {
+            alertTitle.innerText = title;
+            alertMessage.innerText = message;
+            alertActions.innerHTML = ''; 
+
+            if (type === 'success') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-emerald-500/10 border border-emerald-500/20';
+                alertIcon.className = 'fas fa-check text-2xl text-emerald-500';
+                alertActions.innerHTML = `<button onclick="closeAlert()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-6 rounded-lg transition w-full shadow-lg shadow-emerald-500/20">Đóng</button>`;
+            } else if (type === 'error') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-red-500/10 border border-red-500/20';
+                alertIcon.className = 'fas fa-times text-2xl text-red-500';
+                alertActions.innerHTML = `<button onclick="closeAlert()" class="bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-6 rounded-lg transition w-full shadow-lg shadow-red-500/20">Đóng</button>`;
+            } else if (type === 'confirm') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-red-500/10 border border-red-500/20';
+                alertIcon.className = 'fas fa-exclamation-triangle text-2xl text-red-500';
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition';
+                cancelBtn.innerText = 'Hủy';
+                cancelBtn.onclick = closeAlert;
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'flex-1 bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-4 rounded-lg transition shadow-lg shadow-red-500/20';
+                confirmBtn.innerText = 'Xóa Ngay';
+                confirmBtn.onclick = () => { onConfirm(); closeAlert(); };
+
+                alertActions.appendChild(cancelBtn);
+                alertActions.appendChild(confirmBtn);
+            }
+            alertModal.classList.add('active');
+        }
+        window.closeAlert = () => { alertModal.classList.remove('active'); idToDelete = null; };
+
+        // Điền ngày hiện tại
+        const today = new Date();
+        document.getElementById('decisionDate').value = `Ngày ${String(today.getDate()).padStart(2, '0')} tháng ${String(today.getMonth() + 1).padStart(2, '0')} năm ${today.getFullYear()}`;
+
+        // Quản lý Layout
+        const listSection = document.getElementById('listSection');
+        function adjustLayout() {
+            if (isAdmin) {
+                listSection.classList.remove('lg:col-span-12');
+                listSection.classList.add('lg:col-span-5');
+            } else {
+                listSection.classList.remove('lg:col-span-5');
+                listSection.classList.add('lg:col-span-12');
+            }
+        }
+
+        // Xử lý Chữ Ký Ảnh
+        let currentSignatureBase64 = "";
+        const signatureFile = document.getElementById('signatureFile');
+        const signaturePreview = document.getElementById('signaturePreview');
+
+        signatureFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if(file.size > 1024 * 1024) {
+                    showAlert('error', 'File quá lớn', 'Vui lòng chọn hình chữ ký dưới 1MB.');
+                    signatureFile.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    currentSignatureBase64 = event.target.result;
+                    signaturePreview.src = currentSignatureBase64;
+                    signaturePreview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                currentSignatureBase64 = "";
+                signaturePreview.src = "";
+                signaturePreview.classList.add('hidden');
+            }
+        });
+
+        // Phân quyền Firebase
+        onAuthStateChanged(auth, (user) => {
+            const loginToggleBtn = document.getElementById('loginToggleBtn');
+            if (user && !user.isAnonymous) {
+                isAdmin = true;
+                document.body.classList.add('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-unlock"></i> Đăng xuất`;
+                loginToggleBtn.classList.replace('text-yellow-500', 'text-red-400');
+                loginToggleBtn.classList.replace('border-yellow-500/20', 'border-red-400/30');
+                loginToggleBtn.classList.replace('bg-yellow-500/10', 'bg-red-400/10');
+            } else {
+                isAdmin = false;
+                document.body.classList.remove('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-lock"></i> Đăng nhập Admin`;
+                loginToggleBtn.classList.replace('text-red-400', 'text-yellow-500');
+                loginToggleBtn.classList.replace('border-red-400/30', 'border-yellow-500/20');
+                loginToggleBtn.classList.replace('bg-red-400/10', 'bg-yellow-500/10');
+                if(!user) signInAnonymously(auth).catch(console.error);
+            }
+            adjustLayout();
+            listenForDecisions(); 
+        });
+
+        // Auth Modals
+        const loginModal = document.getElementById('loginModal');
+        document.getElementById('loginToggleBtn').addEventListener('click', () => {
+            if (isAdmin) signOut(auth);
+            else loginModal.classList.add('active');
+        });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => loginModal.classList.remove('active'));
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitLoginBtn');
+            const errorText = document.getElementById('loginError');
+            btn.disabled = true; btn.innerText = "Đang kiểm tra...";
+            errorText.classList.add('hidden');
+            
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
+                loginModal.classList.remove('active');
+                document.getElementById('loginForm').reset();
+            } catch (error) { errorText.classList.remove('hidden'); } 
+            finally { btn.disabled = false; btn.innerText = "Đăng Nhập"; }
+        });
+
+        // Nộp Form Quyết Định
+        const promotionForm = document.getElementById('promotionForm');
+        promotionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const origHTML = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang Xử Lý...';
+
+            const decisionData = {
+                date: document.getElementById('decisionDate').value,
+                name: document.getElementById('officerName').value.trim(),
+                uid: document.getElementById('officerUID').value.trim(),
+                oldRank: document.getElementById('oldRank').value.trim(),
+                newRank: document.getElementById('newRank').value.trim(),
+                reason: document.getElementById('reason').value.trim(),
+                signerName: document.getElementById('signerName').value.trim(),
+                signatureBase64: currentSignatureBase64,
+                createdAt: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, collectionName), decisionData);
+                showAlert('success', 'Thành công!', 'Đã ban hành quyết định thăng chức.');
+                
+                // Reset Form
+                document.getElementById('officerName').value = '';
+                document.getElementById('officerUID').value = '';
+                document.getElementById('oldRank').value = '';
+                document.getElementById('newRank').value = '';
+                document.getElementById('reason').value = '';
+                document.getElementById('signatureFile').value = '';
+                signaturePreview.src = '';
+                signaturePreview.classList.add('hidden');
+                currentSignatureBase64 = '';
+            } catch (error) {
+                showAlert('error', 'Lỗi', 'Không thể lưu quyết định.');
+            } finally {
+                btn.disabled = false; btn.innerHTML = origHTML;
+            }
+        });
+
+        // Lắng nghe Dữ liệu Realtime
+        const savedDecisionsList = document.getElementById('saved-decisions-list');
+        const recordCount = document.getElementById('recordCount');
+        
+        function listenForDecisions() {
+            const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
+            onSnapshot(q, (querySnapshot) => {
+                savedDecisionsList.innerHTML = '';
+                allDecisions = [];
+                recordCount.innerText = `${querySnapshot.size} hồ sơ`;
+
+                if(querySnapshot.empty) {
+                    savedDecisionsList.innerHTML = `
+                        <div class="text-center py-10 text-slate-500">
+                            <i class="fas fa-medal text-3xl mb-3 opacity-50"></i>
+                            <p>Chưa có quyết định thăng chức nào.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                querySnapshot.forEach(docSnap => {
+                    const decision = docSnap.data();
+                    decision.id = docSnap.id;
+                    allDecisions.push(decision);
+
+                    const item = document.createElement('div');
+                    item.className = 'bg-slate-800/80 border border-slate-700/80 rounded-lg p-3 hover:bg-slate-700/80 transition cursor-pointer flex justify-between items-center group shadow-md';
+                    
+                    const deleteBtnHTML = isAdmin ? `<button data-id="${decision.id}" class="delete-btn p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition z-10" title="Hủy quyết định"><i class="fas fa-trash pointer-events-none"></i></button>` : '';
+
+                    item.innerHTML = `
+                        <div class="view-doc-btn flex-1 flex items-center gap-4 select-none">
+                            <div class="w-10 h-10 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-[15px] group-hover:text-amber-400 transition-colors">${decision.name}</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">${decision.oldRank} <i class="fas fa-caret-right mx-1 text-slate-600"></i> <span class="text-amber-300 font-medium">${decision.newRank}</span></p>
+                            </div>
+                        </div>
+                        ${deleteBtnHTML}
+                    `;
+                    savedDecisionsList.appendChild(item);
+                });
+            }, (error) => {
+                savedDecisionsList.innerHTML = `<div class="text-center py-4 text-red-400">Lỗi kết nối CSDL.</div>`;
+            });
+        }
+
+        // Xử lý Click List (Xem / Xóa)
+        const viewModal = document.getElementById('documentViewModal');
+        
+        savedDecisionsList.addEventListener('click', (e) => {
+            // Xóa Quyết định
+            if (e.target.closest('.delete-btn')) {
+                e.stopPropagation();
+                const btn = e.target.closest('.delete-btn');
+                idToDelete = btn.getAttribute('data-id');
+                showAlert('confirm', 'Hủy Quyết Định?', 'Thao tác này sẽ xóa vĩnh viễn hồ sơ này.', async () => {
+                    try { await deleteDoc(doc(db, collectionName, idToDelete)); } 
+                    catch (error) { showAlert('error', 'Lỗi', 'Không thể xóa hồ sơ.'); }
+                });
+                return;
+            }
+
+            // Xem Quyết định
+            const viewBtn = e.target.closest('.view-doc-btn');
+            if(viewBtn) {
+                const parentDiv = viewBtn.parentElement;
+                const delBtn = parentDiv.querySelector('.delete-btn');
+                
+                let docId = null;
+                if(delBtn) {
+                    docId = delBtn.getAttribute('data-id');
+                } else {
+                    const index = Array.from(savedDecisionsList.children).indexOf(parentDiv);
+                    if(index >= 0) docId = allDecisions[index].id;
+                }
+
+                if(docId) {
+                    const decision = allDecisions.find(d => d.id === docId);
+                    if(decision) openDocumentView(decision);
+                }
+            }
+        });
+
+        // Logic Modal View Document
+        function openDocumentView(data) {
+            document.getElementById('viewDate').innerText = data.date;
+            document.getElementById('viewName').innerText = data.name;
+            document.getElementById('viewUID').innerText = data.uid || "N/A";
+            document.getElementById('viewOldRank').innerText = data.oldRank;
+            document.getElementById('viewNewRank').innerText = data.newRank;
+            document.getElementById('viewReason').innerText = data.reason;
+            document.getElementById('viewSignerName').innerText = data.signerName || "Chief Of Police";
+            
+            const sigImg = document.getElementById('viewSignatureImg');
+            if (data.signatureBase64) {
+                sigImg.src = data.signatureBase64;
+                sigImg.classList.remove('hidden');
+            } else {
+                sigImg.src = "";
+                sigImg.classList.add('hidden');
+            }
+
+            viewModal.classList.add('active');
+        }
+
+        document.getElementById('closeDocBtn').addEventListener('click', () => viewModal.classList.remove('active'));
+        viewModal.addEventListener('click', (e) => { if(e.target === viewModal) viewModal.classList.remove('active'); });
+
+    </script>
+</body>
+</html>

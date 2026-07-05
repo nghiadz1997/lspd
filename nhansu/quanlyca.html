@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Ca Làm Việc - LSPD</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(30, 41, 59, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+        }
+
+        /* Tùy chỉnh thanh cuộn */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        /* Input Fields */
+        .form-input, .form-select {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        
+        /* Modal Custom */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 100;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            transform: scale(0.95) translateY(10px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0;
+        }
+        .modal-overlay.active .modal-content { 
+            transform: scale(1) translateY(0); 
+            opacity: 1;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 0.25rem 0.625rem; border-radius: 9999px;
+            font-size: 0.75rem; font-weight: 600; border: 1px solid transparent;
+        }
+        .status-morning { background-color: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
+        .status-evening { background-color: rgba(139, 92, 246, 0.1); color: #a78bfa; border-color: rgba(139, 92, 246, 0.2); }
+
+        .online-status-ok { color: #34d399; }
+        .online-status-offline { color: #ef4444; }
+        
+        /* Highlight Check-in */
+        .name-highlight { color: #fbbf24; font-weight: 700; text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+        
+        /* Filter Button */
+        .filter-btn { padding: 0.375rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; color: #94a3b8; transition: all 0.2s; }
+        .filter-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
+        .filter-btn.active { background-color: #3b82f6; color: white; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3); }
+
+        /* Admin Controls */
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only-cell { display: table-cell !important; }
+        body.is-admin .admin-only-flex { display: flex !important; }
+        body.is-admin .admin-only-inline { display: inline-block !important; }
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-500/30">
+
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-4">
+                <a href="/trangchu.html" class="relative p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 transition-colors cursor-pointer block">
+                    <img src="/img/logo xanh.png" 
+                         alt="LSPD Logo" class="h-12 w-auto object-contain drop-shadow-lg"/>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 tracking-tight">
+                        QUẢN LÝ CA TRỰC
+                    </h1>
+                    <p class="text-sm text-slate-400 font-medium tracking-widest uppercase mt-1">Los Santos Police Department</p>
+                </div>
+            </div>
+
+            <!-- Nút Đăng nhập Admin -->
+            <button id="loginToggleBtn" class="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition cursor-pointer">
+                <i class="fas fa-lock"></i> Đăng nhập Admin
+            </button>
+        </header>
+
+        <!-- Khối Đăng Ký và Thống Kê -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            
+            <!-- Form Nhập Liệu (Ai cũng có thể nhập) -->
+            <div class="xl:col-span-2 glass-panel p-6 border-t-4 border-t-blue-500">
+                <h2 class="text-lg font-bold text-white mb-5 flex items-center gap-2">
+                    <i class="fas fa-clipboard-list text-blue-400"></i> Đăng Ký Ca Làm Việc
+                </h2>
+                <form id="shiftForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Tên Sĩ Quan</label>
+                        <input type="text" id="officerName" class="form-input" placeholder="VD:  Hobber" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Số Hiệu Callsign</label>
+                        <input type="text" id="officerUID" class="form-input" placeholder="Callsign..." required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Ngày Vào Ca</label>
+                        <input type="date" id="shiftDate" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Cấp Bậc</label>
+                        <select id="officerRank" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Chức Vụ</label>
+                        <select id="officerPosition" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Đơn Vị</label>
+                        <select id="officerUnit" class="form-select" required></select>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Trạng Thái (Ca)</label>
+                        <select id="status" class="form-select" required>
+                            <option value="Ca Sáng">Ca Sáng (06:00 - 18:00)</option>
+                            <option value="Ca Tối">Ca Tối (18:00 - 06:00)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end mt-2">
+                        <button type="submit" id="submitShiftBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition-colors shadow-lg shadow-blue-500/20">
+                            Lưu Ca Trực
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Thống Kê Tuần -->
+            <div class="glass-panel p-6 border-t-4 border-t-indigo-500 flex flex-col">
+                <h2 class="text-lg font-bold text-white mb-5 flex items-center gap-2">
+                    <i class="fas fa-chart-bar text-indigo-400"></i> Bảng Vàng (Điểm Danh)
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                        <h3 class="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wide text-center border-b border-slate-700 pb-2"><i class="fas fa-sun mr-1"></i> Top Ca Sáng</h3>
+                        <ol id="top-morning-officers" class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li class="text-slate-500 text-center list-none">Đang tải...</li>
+                        </ol>
+                    </div>
+                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                        <h3 class="text-sm font-bold text-purple-400 mb-3 uppercase tracking-wide text-center border-b border-slate-700 pb-2"><i class="fas fa-moon mr-1"></i> Top Ca Tối</h3>
+                        <ol id="top-evening-officers" class="list-decimal list-inside space-y-2 text-sm text-slate-300">
+                            <li class="text-slate-500 text-center list-none">Đang tải...</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bảng Danh Sách Ca Trực -->
+        <div class="glass-panel overflow-hidden">
+             <div class="p-5 border-b border-slate-700/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-800/30">
+                <div class="flex items-center gap-4">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-list-ul text-slate-400"></i> Danh Sách Ca Trực
+                    </h2>
+                    <span id="shiftCount" class="bg-slate-700 text-slate-300 text-xs px-3 py-1 rounded-full font-medium">0 ca</span>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <!-- Filters -->
+                    <div id="filter-buttons" class="flex bg-slate-900/50 rounded-lg p-1 border border-slate-700">
+                        <button class="filter-btn active" data-filter="All">Tất cả</button>
+                        <button class="filter-btn" data-filter="Ca Sáng">Ca Sáng</button>
+                        <button class="filter-btn" data-filter="Ca Tối">Ca Tối</button>
+                    </div>
+                    <!-- Search -->
+                    <div class="relative flex-1 md:w-56">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                        <input type="text" id="searchInput" class="form-input pl-9 py-2 bg-slate-900/50 border-slate-700" placeholder="Tìm theo Tên/UID..."/>
+                    </div>
+                    <!-- Delete All (Admin Only) -->
+                    <button id="clearAllShiftsBtn" class="admin-only admin-only-flex bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-4 rounded-lg transition-colors shadow-lg shadow-red-500/20 whitespace-nowrap gap-2 items-center">
+                        <i class="fas fa-trash-alt"></i> Xóa Hết
+                    </button>
+                </div>
+             </div>
+             
+             <div class="overflow-x-auto max-h-[600px]">
+                <table class="w-full text-sm text-left relative">
+                    <thead class="text-xs text-slate-300 uppercase bg-slate-900/80 backdrop-blur sticky top-0 z-10 shadow-sm border-b border-slate-700">
+                        <tr>
+                            <th scope="col" class="px-5 py-4 font-semibold w-12 text-center">STT</th>
+                            <th scope="col" class="px-5 py-4 font-semibold">Thông Tin Sĩ Quan</th>
+                            <th scope="col" class="px-5 py-4 font-semibold text-center">Ngày Đăng Ký</th>
+                            <th scope="col" class="px-5 py-4 font-semibold text-center">Ca Trực</th>
+                            <th scope="col" class="px-5 py-4 font-semibold text-center">Điểm Danh</th>
+                            <th scope="col" class="px-5 py-4 font-semibold text-center admin-only admin-only-cell w-36">Quản Lý</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shiftTableBody" class="divide-y divide-slate-700/50 text-slate-300">
+                        <tr><td colspan="7" class="px-6 py-12 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2 text-xl mb-2"></i><p>Đang tải dữ liệu...</p></td></tr>
+                    </tbody>
+                </table>
+             </div>
+        </div>
+    </div>
+
+    <!-- Modal Form Chỉnh Sửa (Admin) -->
+    <div id="editModal" class="modal-overlay">
+        <div class="glass-panel p-0 w-full max-w-2xl modal-content border border-blue-500/30 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-700/80 bg-slate-800/50 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-user-edit text-blue-400"></i> Cập Nhật Ca Trực
+                </h2>
+                <button id="closeEditModalIcon" class="text-slate-400 hover:text-white transition"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="editForm" class="p-6 space-y-4">
+                <input type="hidden" id="editDocId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Tên Sĩ Quan</label>
+                        <input type="text" id="editOfficerName" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">UID</label>
+                        <input type="text" id="editOfficerUID" class="form-input bg-slate-800 text-slate-400 cursor-not-allowed" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Ngày vào ca</label>
+                        <input type="date" id="editShiftDate" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Cấp Bậc</label>
+                        <select id="editOfficerRank" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Chức Vụ</label>
+                        <select id="editOfficerPosition" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Đơn Vị</label>
+                        <select id="editOfficerUnit" class="form-select" required></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-300 mb-1">Trạng Thái (Ca)</label>
+                        <select id="editStatus" class="form-select" required>
+                            <option value="Ca Sáng">Ca Sáng</option>
+                            <option value="Ca Tối">Ca Tối</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4 mt-4 border-t border-slate-700/80">
+                    <button type="button" id="closeEditModalBtn" class="flex-1 bg-transparent border border-slate-600 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg transition">Hủy</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition shadow-lg shadow-blue-500/20">Lưu Thay Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content border border-yellow-500/30">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-lock text-yellow-400"></i> Đăng Nhập Quản Trị
+                </h3>
+                <button id="closeLoginBtn" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="adminEmail" class="form-input" required placeholder="admin@lspd.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Mật khẩu</label>
+                    <input type="password" id="adminPassword" class="form-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" class="text-red-400 text-sm hidden">Sai email hoặc mật khẩu!</div>
+                <button type="submit" id="submitLoginBtn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-yellow-600/20 mt-4">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Alert (Thay thế confirm/alert) -->
+    <div id="alertModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content text-center">
+            <div id="alertIconContainer" class="mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4">
+                <i id="alertIcon" class="fas fa-info-circle text-2xl"></i>
+            </div>
+            <h3 id="alertTitle" class="text-lg font-bold text-white mb-2">Thông báo</h3>
+            <p id="alertMessage" class="text-sm text-slate-400 mb-6">Nội dung thông báo.</p>
+            <div id="alertActions" class="flex gap-3 justify-center">
+                <!-- Buttons injected by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, deleteDoc, updateDoc, serverTimestamp, orderBy, writeBatch, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+            authDomain: "alook-26a1f.firebaseapp.com",
+            projectId: "alook-26a1f",
+            storageBucket: "alook-26a1f.appspot.com",
+            messagingSenderId: "201575321450",
+            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        const collectionName = "work_shifts";
+        let allShifts = [];
+        let currentFilter = 'All';
+        let isAdmin = false;
+        let batchDeleteTarget = false;
+        let documentToDeleteId = null;
+
+        // --- Custom Alert System ---
+        const alertModal = document.getElementById('alertModal');
+        const alertTitle = document.getElementById('alertTitle');
+        const alertMessage = document.getElementById('alertMessage');
+        const alertIcon = document.getElementById('alertIcon');
+        const alertIconContainer = document.getElementById('alertIconContainer');
+        const alertActions = document.getElementById('alertActions');
+
+        function showAlert(type, title, message, onConfirm = null) {
+            alertTitle.innerText = title;
+            alertMessage.innerText = message;
+            alertActions.innerHTML = ''; 
+
+            if (type === 'success') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-emerald-500/10 border border-emerald-500/20';
+                alertIcon.className = 'fas fa-check text-2xl text-emerald-500';
+                alertActions.innerHTML = `<button onclick="closeAlert()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-6 rounded-lg transition w-full shadow-lg shadow-emerald-500/20">Đóng</button>`;
+            } else if (type === 'error') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-red-500/10 border border-red-500/20';
+                alertIcon.className = 'fas fa-times text-2xl text-red-500';
+                alertActions.innerHTML = `<button onclick="closeAlert()" class="bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-6 rounded-lg transition w-full shadow-lg shadow-red-500/20">Đóng</button>`;
+            } else if (type === 'confirm') {
+                alertIconContainer.className = 'mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 bg-red-500/10 border border-red-500/20';
+                alertIcon.className = 'fas fa-exclamation-triangle text-2xl text-red-500';
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition';
+                cancelBtn.innerText = 'Hủy';
+                cancelBtn.onclick = closeAlert;
+
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'flex-1 bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-4 rounded-lg transition shadow-lg shadow-red-500/20';
+                confirmBtn.innerText = 'Xác Nhận Xóa';
+                confirmBtn.onclick = () => { onConfirm(); closeAlert(); };
+
+                alertActions.appendChild(cancelBtn);
+                alertActions.appendChild(confirmBtn);
+            }
+            alertModal.classList.add('active');
+        }
+        window.closeAlert = () => { alertModal.classList.remove('active'); documentToDeleteId = null; batchDeleteTarget = false; };
+
+        // --- Data Populate ---
+        const ranks = [
+            "Chief of Police", "Assistant Chief", "Deputy Chief", "Commander", 
+            "Captain", "Lieutenant", "Sergeant", "Detective", 
+            "Corporal", "Senior Officer", "Police Officer I", "Police Academy"
+        ];
+          const positions = [
+            "High High Command", "High Command", "Supervisor", "Patrol Officer"
+        ];
+        
+        const units = [
+            "Air Corps", "Field Training Officer", "Special Weapons And Tactics", 
+            "Suspect Investigation Unit"
+        ];
+
+        function populateSelect(id, arr) {
+            const el = document.getElementById(id);
+            el.innerHTML = `<option value="" disabled selected>-- Lựa chọn --</option>`;
+            arr.forEach(i => el.add(new Option(i, i)));
+        }
+        populateSelect('officerRank', ranks);
+        populateSelect('officerPosition', positions);
+        populateSelect('officerUnit', units);
+        populateSelect('editOfficerRank', ranks);
+        populateSelect('editOfficerPosition', positions);
+        populateSelect('editOfficerUnit', units);
+
+        // --- Authentication (Admin/Guest) ---
+        onAuthStateChanged(auth, (user) => {
+            const loginToggleBtn = document.getElementById('loginToggleBtn');
+            if (user && !user.isAnonymous) {
+                isAdmin = true;
+                document.body.classList.add('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-unlock"></i> Đăng xuất`;
+                loginToggleBtn.classList.replace('text-yellow-500', 'text-red-400');
+                loginToggleBtn.classList.replace('border-yellow-500/20', 'border-red-400/30');
+                loginToggleBtn.classList.replace('bg-yellow-500/10', 'bg-red-400/10');
+            } else {
+                isAdmin = false;
+                document.body.classList.remove('is-admin');
+                loginToggleBtn.innerHTML = `<i class="fas fa-lock"></i> Đăng nhập Admin`;
+                loginToggleBtn.classList.replace('text-red-400', 'text-yellow-500');
+                loginToggleBtn.classList.replace('border-red-400/30', 'border-yellow-500/20');
+                loginToggleBtn.classList.replace('bg-red-400/10', 'bg-yellow-500/10');
+                if(!user) signInAnonymously(auth).catch(console.error);
+            }
+            listenForShifts();
+        });
+
+        // Login Modal Logic
+        const loginModal = document.getElementById('loginModal');
+        document.getElementById('loginToggleBtn').addEventListener('click', () => {
+            if (isAdmin) signOut(auth); else loginModal.classList.add('active');
+        });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => loginModal.classList.remove('active'));
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitLoginBtn');
+            const err = document.getElementById('loginError');
+            btn.disabled = true; btn.innerText = "Đang kiểm tra..."; err.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
+                loginModal.classList.remove('active'); document.getElementById('loginForm').reset();
+            } catch (error) { err.classList.remove('hidden'); } 
+            finally { btn.disabled = false; btn.innerText = "Đăng Nhập"; }
+        });
+
+        // --- DOM Elements ---
+        const shiftForm = document.getElementById('shiftForm');
+        const tableBody = document.getElementById('shiftTableBody');
+        const shiftCountSpan = document.getElementById('shiftCount');
+        const searchInput = document.getElementById('searchInput');
+        const filterButtons = document.getElementById('filter-buttons');
+        
+        // --- Add Shift ---
+        shiftForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitShiftBtn');
+            const origHTML = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang Xử Lý...';
+            try {
+                await addDoc(collection(db, collectionName), {
+                    name: document.getElementById('officerName').value.trim(),
+                    uid: document.getElementById('officerUID').value.trim(),
+                    shiftDate: document.getElementById('shiftDate').value,
+                    rank: document.getElementById('officerRank').value,
+                    position: document.getElementById('officerPosition').value,
+                    unit: document.getElementById('officerUnit').value,
+                    status: document.getElementById('status').value,
+                    lastCheckIn: null,
+                    consecutiveDays: 0,
+                    checkInCount: 0,
+                    createdAt: serverTimestamp()
+                });
+                shiftForm.reset();
+                showAlert('success', 'Thành công', 'Đã đăng ký ca làm việc thành công.');
+            } catch (error) { showAlert('error', 'Lỗi', 'Không thể lưu thông tin.'); }
+            finally { btn.disabled = false; btn.innerHTML = origHTML; }
+        });
+
+        // --- Listen Data ---
+        function listenForShifts() {
+            const q = query(collection(db, collectionName), orderBy("createdAt", "desc"));
+            onSnapshot(q, (querySnapshot) => {
+                allShifts = [];
+                querySnapshot.forEach((doc) => allShifts.push({ id: doc.id, ...doc.data() }));
+                updateView();
+            });
+        }
+        
+        function updateView() {
+            let filteredShifts = allShifts;
+            if (currentFilter !== 'All') filteredShifts = allShifts.filter(item => item.status === currentFilter);
+            const searchTerm = searchInput.value.toLowerCase();
+            if (searchTerm) {
+                filteredShifts = filteredShifts.filter(item => item.name.toLowerCase().includes(searchTerm) || item.uid.toLowerCase().includes(searchTerm));
+            }
+            
+            shiftCountSpan.innerText = `${filteredShifts.length} ca`;
+            renderTable(filteredShifts);
+            updateStatistics();
+        }
+
+        function renderTable(shifts) {
+            tableBody.innerHTML = '';
+            if(shifts.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-500">Không có dữ liệu ca trực.</td></tr>`;
+                return;
+            }
+
+            shifts.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-slate-700/50 hover:bg-slate-800/40 transition-colors group';
+                
+                const statusClass = item.status === 'Ca Sáng' ? 'status-morning' : 'status-evening';
+                
+                let onlineStatusText = 'Chưa điểm danh';
+                let onlineStatusClass = 'online-status-offline text-slate-500';
+                if (item.lastCheckIn) {
+                    onlineStatusText = 'Đã điểm danh';
+                    onlineStatusClass = 'online-status-ok bg-emerald-500/10 px-2 py-1 rounded';
+                }
+                
+                let nameClass = 'font-semibold text-white';
+                if (item.consecutiveDays >= 3) nameClass = 'name-highlight'; // Highlight nếu làm nhiều ngày
+                
+                // Nút Admin
+                const adminBtns = isAdmin ? `
+                    <div class="flex justify-center gap-2">
+                        <button data-id="${item.id}" class="check-in-btn p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition" title="Điểm Danh Thủ Công"><i class="fas fa-check-circle pointer-events-none"></i></button>
+                        <button data-id="${item.id}" class="edit-btn p-1.5 text-blue-400 hover:bg-blue-400/10 rounded transition" title="Sửa"><i class="fas fa-pen pointer-events-none"></i></button>
+                        <button data-id="${item.id}" class="delete-btn p-1.5 text-red-500 hover:bg-red-500/10 rounded transition" title="Xóa"><i class="fas fa-trash pointer-events-none"></i></button>
+                    </div>
+                ` : `<span class="text-xs text-slate-600 italic">Chỉ đọc</span>`;
+
+                row.innerHTML = `
+                    <td class="px-5 py-4 text-center font-medium text-slate-500">${index + 1}</td>
+                    <td class="px-5 py-4">
+                        <div class="${nameClass}">${item.name}</div>
+                        <div class="text-xs font-mono text-slate-400 mt-0.5">UID: ${item.uid} | ${item.rank}</div>
+                    </td>
+                    <td class="px-5 py-4 text-center text-slate-300 whitespace-nowrap">${formatDate(item.shiftDate)}</td>
+                    <td class="px-5 py-4 text-center"><span class="badge ${statusClass}">${item.status}</span></td>
+                    <td class="px-5 py-4 text-center"><span class="font-medium text-xs ${onlineStatusClass}">${onlineStatusText}</span></td>
+                    <td class="px-5 py-4 text-center admin-only admin-only-cell">${adminBtns}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        function updateStatistics() {
+            const topMorningList = document.getElementById('top-morning-officers');
+            const topEveningList = document.getElementById('top-evening-officers');
+            const morningStats = {}; const eveningStats = {};
+
+            allShifts.forEach(shift => {
+                const name = shift.name; const count = shift.checkInCount || 0;
+                if (shift.status === 'Ca Sáng') morningStats[name] = (morningStats[name] || 0) + count;
+                else if (shift.status === 'Ca Tối') eveningStats[name] = (eveningStats[name] || 0) + count;
+            });
+
+            const renderTop = (statsObj, listEl) => {
+                const sorted = Object.entries(statsObj).sort(([, a], [, b]) => b - a).slice(0, 5);
+                listEl.innerHTML = '';
+                if (sorted.length > 0) {
+                    sorted.forEach(([name, count]) => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span class="font-medium">${name}</span> <span class="text-slate-500 ml-1">(${count} lần)</span>`;
+                        listEl.appendChild(li);
+                    });
+                } else {
+                    listEl.innerHTML = '<li class="text-slate-500 text-center list-none">Chưa có dữ liệu</li>';
+                }
+            };
+            renderTop(morningStats, topMorningList);
+            renderTop(eveningStats, topEveningList);
+        }
+
+        // --- Table Actions (CheckIn/Edit/Delete) ---
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+
+        tableBody.addEventListener('click', async (e) => {
+            if(!isAdmin) return;
+            const btn = e.target.closest('button');
+            if(!btn) return;
+            const docId = btn.dataset.id;
+            const docRef = doc(db, collectionName, docId);
+
+            if (btn.classList.contains('delete-btn')) {
+                documentToDeleteId = docId;
+                showAlert('confirm', 'Cảnh Báo Xóa', 'Bạn có chắc muốn xóa sĩ quan này khỏi danh sách ca trực?', async () => {
+                    await deleteDoc(docRef);
+                });
+            } 
+            else if (btn.classList.contains('edit-btn')) {
+                const item = allShifts.find(c => c.id === docId);
+                if (item) {
+                    document.getElementById('editDocId').value = docId;
+                    document.getElementById('editOfficerName').value = item.name;
+                    document.getElementById('editOfficerUID').value = item.uid;
+                    document.getElementById('editShiftDate').value = item.shiftDate;
+                    document.getElementById('editOfficerRank').value = item.rank;
+                    document.getElementById('editOfficerPosition').value = item.position;
+                    document.getElementById('editOfficerUnit').value = item.unit;
+                    document.getElementById('editStatus').value = item.status;
+                    editModal.classList.add('active');
+                }
+            } 
+            else if (btn.classList.contains('check-in-btn')) {
+                const item = allShifts.find(c => c.id === docId);
+                if (item) {
+                    const today = new Date();
+                    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+                    
+                    let consecutive = item.consecutiveDays || 0;
+                    if (item.lastCheckIn) {
+                        const lastDate = item.lastCheckIn.toDate();
+                        if (lastDate.toDateString() === yesterday.toDateString()) consecutive++;
+                        else if (lastDate.toDateString() !== today.toDateString()) consecutive = 1;
+                    } else consecutive = 1;
+
+                    try {
+                        await updateDoc(docRef, { lastCheckIn: serverTimestamp(), consecutiveDays: consecutive, checkInCount: increment(1) });
+                    } catch (error) { showAlert('error', 'Lỗi', 'Không thể điểm danh.'); }
+                }
+            }
+        });
+
+        // Submit Sửa
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.innerHTML = "Đang lưu...";
+            try {
+                await updateDoc(doc(db, collectionName, document.getElementById('editDocId').value), {
+                    name: document.getElementById('editOfficerName').value,
+                    shiftDate: document.getElementById('editShiftDate').value,
+                    rank: document.getElementById('editOfficerRank').value,
+                    position: document.getElementById('editOfficerPosition').value,
+                    unit: document.getElementById('editOfficerUnit').value,
+                    status: document.getElementById('editStatus').value,
+                });
+                editModal.classList.remove('active');
+            } catch (error) { showAlert('error', 'Lỗi', 'Cập nhật thất bại.'); }
+            finally { btn.disabled = false; btn.innerHTML = "Lưu Thay Đổi"; }
+        });
+
+        const closeEditModals = () => editModal.classList.remove('active');
+        document.getElementById('closeEditModalBtn').addEventListener('click', closeEditModals);
+        document.getElementById('closeEditModalIcon').addEventListener('click', closeEditModals);
+
+        // --- Filters & Search ---
+        searchInput.addEventListener('input', updateView);
+        filterButtons.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') {
+                currentFilter = e.target.dataset.filter;
+                filterButtons.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                updateView();
+            }
+        });
+
+        // --- Delete All (Batch) ---
+        document.getElementById('clearAllShiftsBtn').addEventListener('click', () => {
+            if(!isAdmin) return;
+            if (allShifts.length === 0) { showAlert('error', 'Trống', 'Không có dữ liệu nào để xóa.'); return; }
+
+            batchDeleteTarget = true;
+            showAlert('confirm', 'NGUY HIỂM: XÓA TOÀN BỘ', 'Thao tác này sẽ dọn sạch TOÀN BỘ danh sách ca trực hiện tại. Không thể hoàn tác!', async () => {
+                const batch = writeBatch(db);
+                allShifts.forEach(shift => batch.delete(doc(db, collectionName, shift.id)));
+                try {
+                    await batch.commit();
+                    showAlert('success', 'Đã Xóa Dữ Liệu', `Thành công dọn sạch ${allShifts.length} bản ghi.`);
+                } catch (error) { showAlert('error', 'Lỗi', 'Xóa hàng loạt thất bại.'); }
+            });
+        });
+
+        // Utils
+        function formatDate(d) {
+            if(!d) return ''; const p = d.split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+        }
+    </script>
+</body>
+</html>

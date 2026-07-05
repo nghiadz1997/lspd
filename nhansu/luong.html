@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Lương - LSPD</title>
+    
+    <!-- Mạng phân phối nội dung Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- html2canvas for Screenshots -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Cấu hình Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            background-image: 
+                radial-gradient(circle at 20% 40%, rgba(37, 99, 235, 0.15), transparent 40%),
+                radial-gradient(circle at 80% 60%, rgba(16, 185, 129, 0.1), transparent 40%),
+                linear-gradient(rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.9)), 
+                url('https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=2079&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1rem;
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Tùy chỉnh Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #475569; }
+
+        /* Tùy chỉnh Form Controls */
+        .form-input, .form-select {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            color: #f8fafc;
+            transition: all 0.2s ease;
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.875rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background-color: rgba(15, 23, 42, 0.9);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        
+        /* Ẩn mũi tên của input type number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Custom Tabs (Segmented Control) */
+        .tabs-container {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--glass-border);
+            border-radius: 999px;
+            padding: 0.375rem;
+            display: inline-flex;
+            gap: 0.25rem;
+        }
+        .tab-btn {
+            padding: 0.625rem 1.5rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+        }
+        .tab-btn:hover { color: #e2e8f0; }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Bảng */
+        .table-row-hover:hover { background-color: rgba(255, 255, 255, 0.04); }
+        .table-container { max-height: calc(100vh - 350px); overflow-y: auto; }
+        thead th { position: sticky; top: 0; z-index: 10; background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); }
+
+        /* Input gọn trong bảng lương */
+        .inline-input {
+            background-color: rgba(255,255,255,0.05);
+            border: 1px solid transparent;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.5rem;
+            width: 100%;
+            color: #f8fafc;
+            transition: all 0.2s;
+        }
+        .inline-input:hover { border-color: rgba(255,255,255,0.2); }
+        .inline-input:focus {
+            background-color: rgba(15, 23, 42, 0.9);
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background-color: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; visibility: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            z-index: 100;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { 
+            transform: scale(0.9) translateY(20px); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0;
+        }
+        .modal-overlay.active .modal-content { 
+            transform: scale(1) translateY(0); 
+            opacity: 1;
+        }
+
+        /* Tab Content Transitions */
+        .tab-content { display: none; animation: fadeIn 0.4s ease forwards; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Admin Controls */
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only-flex { display: flex !important; }
+        body.is-admin .admin-only-cell { display: table-cell !important; }
+        body.is-admin .admin-only-block { display: block !important; }
+        
+        /* Chặn nhập liệu của member thường trong bảng lương */
+        body:not(.is-admin) .admin-input {
+            pointer-events: none;
+            background-color: transparent !important;
+            border-color: transparent !important;
+        }
+        body:not(.is-admin) .admin-input::placeholder { color: transparent; }
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-500/30">
+
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6">
+            <div class="flex items-center gap-4">
+                <a href="/trangchu.html" class="relative p-2 bg-white/5 rounded-xl border border-white/10 shadow-inner hover:bg-white/10 transition-colors cursor-pointer block">
+                    <img src="/img/logo xanh.png" 
+                         alt="LSPD Logo" class="h-12 w-auto object-contain drop-shadow-lg"/>
+                </a>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
+                        HỆ THỐNG LƯƠNG THƯỞNG
+                    </h1>
+                    <p class="text-sm text-slate-400 font-medium tracking-widest uppercase mt-1">Los Santos Police Department</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-3">
+                <!-- Nút Đăng nhập Admin -->
+                <button id="loginToggleBtn" class="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/20 transition cursor-pointer">
+                    <i class="fas fa-lock"></i> Đăng nhập Admin
+                </button>
+                
+                <!-- Tabs -->
+                <div class="tabs-container">
+                    <button id="rosterTabBtn" class="tab-btn active">
+                        <i class="fas fa-users mr-2 opacity-80"></i>Danh Sách NV
+                    </button>
+                    <button id="salaryTabBtn" class="tab-btn">
+                        <i class="fas fa-file-invoice-dollar mr-2 opacity-80"></i>Bảng Lương
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- ======================= -->
+        <!-- TAB 1: DANH SÁCH SĨ QUAN -->
+        <!-- ======================= -->
+        <div id="rosterContent" class="tab-content active space-y-6">
+            
+            <!-- Form Thêm Sĩ Quan (Sẽ ẩn nếu không phải Admin) -->
+            <div class="glass-panel p-6 border-t-4 border-t-blue-500 admin-only admin-only-block">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-user-plus text-blue-400"></i> Bổ Sung Hồ Sơ Mới
+                </h2>
+                <form id="addOfficerForm" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
+                    <div class="lg:col-span-2">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Tên Sĩ Quan</label>
+                        <input type="text" id="officerName" class="form-input" placeholder="VD: John Doe" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Số Hiệu UID</label>
+                        <input type="text" id="officerUID" class="form-input" placeholder="UID..." required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Cấp Bậc</label>
+                        <select id="officerRank" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Chức Vụ</label>
+                        <select id="officerPosition" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Đơn Vị</label>
+                        <select id="officerUnit" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Lương Cơ Bản ($)</label>
+                        <input type="number" id="officerBaseSalary" class="form-input text-green-400 font-semibold" placeholder="0" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Thưởng MĐ ($)</label>
+                        <input type="number" id="officerBonus" class="form-input text-yellow-400 font-semibold" placeholder="0" required>
+                    </div>
+                    <div class="lg:col-span-7 flex justify-end mt-2">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-6 rounded-lg transition-colors shadow-lg shadow-blue-500/20">
+                            Lưu Hồ Sơ
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bảng Danh Sách -->
+            <div class="glass-panel overflow-hidden">
+                <div class="p-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/30">
+                    <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-list-ul text-slate-400"></i> Cơ Cấu Nhân Sự (Có Lương)
+                    </h2>
+                    <span id="rosterCount" class="text-xs font-medium bg-slate-700 text-slate-300 px-3 py-1 rounded-full border border-slate-600">Đang tải...</span>
+                </div>
+                <div class="table-container">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="text-xs text-slate-300 uppercase shadow-md">
+                            <tr>
+                                <th class="px-6 py-4 font-semibold w-16 text-center">STT</th>
+                                <th class="px-6 py-4 font-semibold">Tên Sĩ Quan</th>
+                                <th class="px-6 py-4 font-semibold">UID</th>
+                                <th class="px-6 py-4 font-semibold">Cấp Bậc & Chức Vụ</th>
+                                <th class="px-6 py-4 font-semibold">Đơn Vị</th>
+                                <th class="px-6 py-4 font-semibold text-right">Lương CB</th>
+                                <th class="px-6 py-4 font-semibold text-right">Thưởng</th>
+                                <th class="px-6 py-4 font-semibold text-center w-24 admin-only admin-only-cell">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rosterTableBody" class="divide-y divide-slate-700/50 text-slate-300">
+                            <tr><td colspan="8" class="px-6 py-12 text-center text-slate-400"><i class="fas fa-spinner fa-spin mr-2"></i>Đang tải dữ liệu...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= -->
+        <!-- TAB 2: BẢNG LƯƠNG TUẦN -->
+        <!-- ======================= -->
+        <div id="salaryContent" class="tab-content space-y-6">
+            
+            <!-- Toolbar -->
+            <div class="glass-panel p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="relative">
+                        <i class="fas fa-filter absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <select id="salaryUnitFilter" class="form-select pl-9 py-2 border-slate-600 bg-slate-800">
+                            <option value="All">Tất cả Đơn Vị</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-calendar-alt absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="week" id="weekSelector" class="form-input pl-9 py-2 border-slate-600 bg-slate-800"/>
+                    </div>
+                </div>
+                
+                <button id="captureSalaryBtn" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-5 rounded-lg transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                    <i class="fas fa-camera"></i> Xuất File Ảnh
+                </button>
+            </div>
+
+            <!-- Vùng chụp ảnh (Phải thiết lập background solid khi xuất để không bị lỗi kính mờ) -->
+            <div class="glass-panel overflow-hidden transition-colors duration-300" id="salary-sheet-container">
+                <div class="p-5 border-b border-slate-700/50 flex justify-between items-center bg-slate-800/30">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-money-check-alt text-emerald-400"></i> Bảng Tổng Kết Lương LSPD
+                    </h2>
+                    <span id="salaryWeekLabel" class="text-sm font-semibold text-emerald-300 tracking-wide">Tuần...</span>
+                </div>
+                <div class="table-container">
+                    <table class="w-full text-sm text-left border-collapse">
+                        <thead class="text-xs text-slate-300 uppercase shadow-md bg-slate-900/50">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-center w-12">STT</th>
+                                <th class="px-4 py-3 font-semibold">Nhân Sự</th>
+                                <th class="px-4 py-3 font-semibold">Chức vụ/ĐV</th>
+                                <th class="px-4 py-3 font-semibold text-right text-emerald-300">Tổng Nhận ($)</th>
+                                <th class="px-4 py-3 font-semibold text-center w-28">FP Phạt</th>
+                                <th class="px-4 py-3 font-semibold w-56">Ghi Chú</th>
+                                <th class="px-4 py-3 font-semibold text-center w-16 no-capture admin-only admin-only-cell">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salaryTableBody" class="divide-y divide-slate-700/50 text-slate-300">
+                            <!-- Dữ liệu bảng lương -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ======================= -->
+    <!-- MODALS -->
+    <!-- ======================= -->
+
+    <!-- Modal Login Admin -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content border border-yellow-500/30">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-lock text-yellow-400"></i>
+                    Đăng Nhập Quản Trị
+                </h3>
+                <button id="closeLoginBtn" class="text-slate-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                    <input type="email" id="adminEmail" class="form-input" required placeholder="admin@lspd.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Mật khẩu</label>
+                    <input type="password" id="adminPassword" class="form-input" required placeholder="••••••••">
+                </div>
+                <div id="loginError" class="text-red-400 text-sm hidden">Sai email hoặc mật khẩu!</div>
+                <button type="submit" id="submitLoginBtn" class="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 rounded-lg transition-colors shadow-lg shadow-yellow-600/20 mt-4">Đăng Nhập</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Edit Sĩ Quan -->
+    <div id="editOfficerModal" class="modal-overlay">
+        <div class="glass-panel p-0 w-full max-w-2xl modal-content overflow-hidden border-slate-600">
+            <div class="px-6 py-4 border-b border-slate-700/80 bg-slate-800/50 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-user-edit text-blue-400"></i> Cập Nhật Hồ Sơ Sĩ Quan
+                </h2>
+                <button id="closeEditModalIcon" class="text-slate-400 hover:text-white transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="editOfficerForm" class="p-6 space-y-5">
+                <input type="hidden" id="editOfficerId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Tên Sĩ Quan</label>
+                        <input type="text" id="editOfficerName" class="form-input" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">UID</label>
+                        <input type="text" id="editOfficerUID" class="form-input bg-slate-800 text-slate-400 cursor-not-allowed" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Cấp Bậc</label>
+                        <select id="editOfficerRank" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Chức Vụ</label>
+                        <select id="editOfficerPosition" class="form-select" required></select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Đơn Vị Công Tác</label>
+                        <select id="editOfficerUnit" class="form-select" required></select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Lương Cơ Bản</label>
+                        <input type="number" id="editOfficerBaseSalary" class="form-input text-green-400" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-1.5">Thưởng Mặc Định</label>
+                        <input type="number" id="editOfficerBonus" class="form-input text-yellow-400" required>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3 pt-5 mt-6 border-t border-slate-700/80">
+                    <button type="button" id="closeEditModalBtn" class="flex-1 bg-transparent border border-slate-600 hover:bg-slate-700 text-white font-medium py-2.5 rounded-lg transition">Hủy Bỏ</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-lg transition shadow-lg shadow-blue-500/20">Lưu Thay Đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Xóa -->
+    <div id="deleteConfirmModal" class="modal-overlay">
+        <div class="glass-panel p-6 w-full max-w-sm modal-content text-center border-red-500/30">
+            <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-500/10 mb-4 border border-red-500/20">
+                <i class="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Xóa Sĩ Quan Khỏi Bảng Lương?</h3>
+            <p class="text-sm text-slate-400 mb-6">Bạn có chắc chắn muốn xóa nhân sự này? Thao tác này sẽ xóa hồ sơ lương và không thể khôi phục.</p>
+            
+            <div class="flex gap-3">
+                <button id="cancelDeleteBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition">Hủy</button>
+                <button id="confirmDeleteBtn" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-medium py-2 px-4 rounded-lg transition shadow-lg shadow-red-500/20">Xóa Ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tích hợp Firebase 11.6.1 & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Cấu hình Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+            authDomain: "alook-26a1f.firebaseapp.com",
+            projectId: "alook-26a1f",
+            storageBucket: "alook-26a1f.appspot.com",
+            messagingSenderId: "201575321450",
+            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State variables
+        const rosterCollectionName = 'lspd_roster';
+        const notesCollectionName = 'lspd_salary_notes';
+        let allOfficers = [];
+        let idToDelete = null;
+        let isAdmin = false;
+
+        // Xác thực & Phân quyền
+        onAuthStateChanged(auth, (user) => {
+            const loginToggleBtn = document.getElementById('loginToggleBtn');
+            if (user) {
+                if (!user.isAnonymous) {
+                    // Nếu là user thường (đăng nhập bằng email) => Bật Mode Admin
+                    isAdmin = true;
+                    document.body.classList.add('is-admin');
+                    loginToggleBtn.innerHTML = `<i class="fas fa-unlock"></i> Đăng xuất`;
+                    loginToggleBtn.classList.replace('text-yellow-500', 'text-red-400');
+                    loginToggleBtn.classList.replace('border-yellow-500/20', 'border-red-400/30');
+                    loginToggleBtn.classList.replace('bg-yellow-500/10', 'bg-red-400/10');
+                    loginToggleBtn.classList.replace('hover:bg-yellow-500/20', 'hover:bg-red-400/20');
+                } else {
+                    // Nếu đăng nhập ẩn danh => Chế độ khách (Tắt chức năng)
+                    isAdmin = false;
+                    document.body.classList.remove('is-admin');
+                    loginToggleBtn.innerHTML = `<i class="fas fa-lock"></i> Đăng nhập Admin`;
+                    loginToggleBtn.classList.replace('text-red-400', 'text-yellow-500');
+                    loginToggleBtn.classList.replace('border-red-400/30', 'border-yellow-500/20');
+                    loginToggleBtn.classList.replace('bg-red-400/10', 'bg-yellow-500/10');
+                    loginToggleBtn.classList.replace('hover:bg-red-400/20', 'hover:bg-yellow-500/20');
+                }
+                setupRosterListener(); // Fetch lại dữ liệu
+            } else {
+                signInAnonymously(auth).catch((error) => console.error("Lỗi đăng nhập ẩn danh:", error));
+            }
+        });
+
+        // Login Modal Logic
+        const loginModal = document.getElementById('loginModal');
+        document.getElementById('loginToggleBtn').addEventListener('click', () => {
+            if (isAdmin) signOut(auth);
+            else loginModal.classList.add('active');
+        });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => loginModal.classList.remove('active'));
+        loginModal.addEventListener('click', (e) => { if(e.target === loginModal) loginModal.classList.remove('active'); });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitLoginBtn');
+            const errorText = document.getElementById('loginError');
+            btn.disabled = true; btn.innerText = "Đang kiểm tra...";
+            errorText.classList.add('hidden');
+            
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPassword').value);
+                loginModal.classList.remove('active');
+                document.getElementById('loginForm').reset();
+            } catch (error) {
+                errorText.classList.remove('hidden');
+                console.error("Lỗi đăng nhập:", error);
+            } finally {
+                btn.disabled = false; btn.innerText = "Đăng Nhập";
+            }
+        });
+
+        // --- DOM Elements ---
+        const rosterTabBtn = document.getElementById('rosterTabBtn');
+        const salaryTabBtn = document.getElementById('salaryTabBtn');
+        const rosterContent = document.getElementById('rosterContent');
+        const salaryContent = document.getElementById('salaryContent');
+        
+        const rosterTableBody = document.getElementById('rosterTableBody');
+        const salaryTableBody = document.getElementById('salaryTableBody');
+        const rosterCount = document.getElementById('rosterCount');
+        const salaryWeekLabel = document.getElementById('salaryWeekLabel');
+        
+        const weekSelector = document.getElementById('weekSelector');
+        const salaryUnitFilter = document.getElementById('salaryUnitFilter');
+        
+        // Modals & Forms
+        const addOfficerForm = document.getElementById('addOfficerForm');
+        
+        const editModal = document.getElementById('editOfficerModal');
+        const editOfficerForm = document.getElementById('editOfficerForm');
+        
+        const deleteModal = document.getElementById('deleteConfirmModal');
+
+        // --- Dữ liệu hệ thống ---
+        const ranks = [
+            "Chief of Police", "Assistant Chief", "Deputy Chief", "Commander", 
+            "Captain", "Lieutenant", "Sergeant", "Detective", 
+            "Corporal", "Senior Officer", "Police Officer I", "Police Academy"
+        ];
+        
+        const positions = [
+            "Chief of Police", "Assistant Chief", "Deputy Chief", "Commander", 
+            "Captain", "Lieutenant", "Sergeant", "Detective", 
+            "Corporal", "Senior Officer", "Police Officer I", "Police Academy"
+        ];
+        
+        const units = [
+            "Air Corps", "Field Training Officer", "Special Weapons And Tactics", 
+            "Suspect Investigation Unit", "High High Command", "High Command", 
+            "Supervisor", "Patrol Unit"
+        ];
+
+        // Khởi tạo Options cho Selects
+        function populateSelect(selectId, options, placeholder = '') {
+            const el = document.getElementById(selectId);
+            if(placeholder) el.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
+            else el.innerHTML = '';
+            options.forEach(opt => el.add(new Option(opt, opt)));
+        }
+        
+        populateSelect('officerRank', ranks, '-- Chọn Cấp Bậc --');
+        populateSelect('officerPosition', positions, '-- Chọn Chức Vụ --');
+        populateSelect('officerUnit', units, '-- Chọn Đơn Vị --');
+        
+        populateSelect('editOfficerRank', ranks);
+        populateSelect('editOfficerPosition', positions);
+        populateSelect('editOfficerUnit', units);
+        
+        units.forEach(unit => salaryUnitFilter.add(new Option(unit, unit)));
+
+        // --- Chuyển Tabs ---
+        function switchTab(activeBtn, inactiveBtn, activeContent, inactiveContent) {
+            activeBtn.classList.add('active');
+            inactiveBtn.classList.remove('active');
+            activeContent.classList.add('active');
+            inactiveContent.classList.remove('active');
+        }
+        rosterTabBtn.addEventListener('click', () => switchTab(rosterTabBtn, salaryTabBtn, rosterContent, salaryContent));
+        salaryTabBtn.addEventListener('click', () => {
+            switchTab(salaryTabBtn, rosterTabBtn, salaryContent, rosterContent);
+            updateSalaryView();
+        });
+
+        // --- Helpers ---
+        function getWeekId(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+        }
+
+        function formatCurrency(num) {
+            return (parseFloat(num) || 0).toLocaleString('vi-VN');
+        }
+
+        // Khởi tạo Tuần
+        weekSelector.value = getWeekId(new Date());
+        salaryWeekLabel.innerText = "Lương " + weekSelector.value;
+
+        // --- Logic Realtime (Lấy Dữ Liệu) ---
+        function setupRosterListener() {
+            const q = query(collection(db, rosterCollectionName)); 
+            onSnapshot(q, (snapshot) => {
+                allOfficers = [];
+                snapshot.forEach(doc => allOfficers.push({ id: doc.id, ...doc.data() }));
+                
+                // Sắp xếp theo cấp bậc
+                allOfficers.sort((a, b) => ranks.indexOf(a.rank) - ranks.indexOf(b.rank));
+                
+                renderRoster(allOfficers);
+                if(salaryContent.classList.contains('active')) updateSalaryView();
+            }, (error) => console.error("Lỗi nghe dữ liệu:", error));
+        }
+
+        // --- Render Tab Danh Sách ---
+        function renderRoster(officers) {
+            rosterTableBody.innerHTML = '';
+            rosterCount.innerText = `${officers.length} Sĩ Quan`;
+
+            if(officers.length === 0) {
+                rosterTableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-slate-500">Chưa có nhân sự nào trong danh sách nhận lương.</td></tr>`;
+                return;
+            }
+
+            officers.forEach((officer, index) => {
+                const row = document.createElement('tr');
+                row.className = 'table-row-hover border-b border-slate-700/50 last:border-0 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-center font-medium text-slate-500">${index + 1}</td>
+                    <td class="px-6 py-4 font-semibold text-white flex items-center gap-3">
+                        <div class="w-8 h-8 rounded bg-slate-700 flex items-center justify-center text-xs text-blue-400 border border-slate-600 uppercase">
+                            ${officer.name.charAt(0)}
+                        </div>
+                        ${officer.name}
+                    </td>
+                    <td class="px-6 py-4 font-mono text-slate-400">${officer.uid}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-slate-300 font-medium">${officer.rank}</div>
+                        <div class="text-xs text-slate-500">${officer.position}</div>
+                    </td>
+                    <td class="px-6 py-4"><span class="bg-slate-800/80 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-md text-xs">${officer.unit}</span></td>
+                    <td class="px-6 py-4 text-right font-semibold text-emerald-400">$${formatCurrency(officer.baseSalary)}</td>
+                    <td class="px-6 py-4 text-right font-semibold text-yellow-400">$${formatCurrency(officer.bonus)}</td>
+                    <td class="px-6 py-4 text-center admin-only admin-only-cell">
+                        <div class="flex justify-center gap-2">
+                            <button class="edit-btn p-1.5 text-blue-400 hover:bg-blue-400/10 rounded transition" data-id="${officer.id}" title="Sửa">
+                                <i class="fas fa-pen pointer-events-none"></i>
+                            </button>
+                            <button class="delete-btn p-1.5 text-red-400 hover:bg-red-400/10 rounded transition" data-id="${officer.id}" title="Xóa">
+                                <i class="fas fa-trash pointer-events-none"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                rosterTableBody.appendChild(row);
+            });
+        }
+
+        // --- Render Tab Bảng Lương ---
+        async function updateSalaryView() {
+            const weekId = weekSelector.value;
+            salaryWeekLabel.innerText = "Lương " + weekId;
+            if (!weekId) return;
+
+            const selectedUnit = salaryUnitFilter.value;
+            let filteredOfficers = allOfficers;
+            if (selectedUnit !== 'All') {
+                filteredOfficers = allOfficers.filter(o => o.unit === selectedUnit);
+            }
+            
+            // Sắp xếp lương tổng giảm dần (cùng cấp)
+            filteredOfficers.sort((a, b) => {
+                const rA = ranks.indexOf(a.rank), rB = ranks.indexOf(b.rank);
+                if (rA !== rB) return rA - rB;
+                const totA = (Number(a.baseSalary)||0) + (Number(a.bonus)||0);
+                const totB = (Number(b.baseSalary)||0) + (Number(b.bonus)||0);
+                return totB - totA;
+            });
+
+            // Lấy notes của tuần hiện tại
+            let notesData = {};
+            try {
+                const notesDoc = await getDoc(doc(db, notesCollectionName, weekId));
+                if(notesDoc.exists()) notesData = notesDoc.data();
+            } catch (err) { console.error("Lỗi tải notes:", err); }
+
+            salaryTableBody.innerHTML = '';
+            
+            if(filteredOfficers.length === 0) {
+                salaryTableBody.innerHTML = `<tr><td colspan="7" class="px-4 py-10 text-center text-slate-500">Không có dữ liệu sĩ quan cho đơn vị/bộ lọc này.</td></tr>`;
+                return;
+            }
+
+            filteredOfficers.forEach((officer, index) => {
+                const totalSalary = (parseFloat(officer.baseSalary) || 0) + (parseFloat(officer.bonus) || 0);
+                const row = document.createElement('tr');
+                row.className = 'table-row-hover border-b border-slate-700/50 transition-colors group';
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-center text-slate-500 font-medium">${index + 1}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-semibold text-white">${officer.name}</div>
+                        <div class="text-xs font-mono text-slate-500">UID: ${officer.uid}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="text-slate-300 text-sm">${officer.rank}</div>
+                        <div class="text-xs text-blue-400 mt-0.5">${officer.position} - ${officer.unit}</div>
+                    </td>
+                    <td class="px-4 py-3 text-right font-bold text-emerald-400 bg-emerald-500/5">$${formatCurrency(totalSalary)}</td>
+                    <td class="px-4 py-3">
+                        <input type="number" class="fp-input admin-input inline-input text-center text-red-300 font-semibold placeholder-slate-600" data-id="${officer.id}" value="${notesData[officer.id + '_fp'] || ''}" placeholder="0" ${!isAdmin ? 'readonly' : ''}>
+                    </td>
+                    <td class="px-4 py-3">
+                        <input type="text" class="salary-note-input admin-input inline-input text-yellow-200 placeholder-slate-600" data-id="${officer.id}" value="${notesData[officer.id] || ''}" placeholder="Nhập ghi chú..." ${!isAdmin ? 'readonly' : ''}>
+                    </td>
+                    <td class="px-4 py-3 text-center no-capture admin-only admin-only-cell">
+                        <button class="clear-data-btn text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition duration-200" data-id="${officer.id}" title="Xóa Trống Dữ Liệu Hàng Này">
+                            <i class="fas fa-eraser pointer-events-none"></i>
+                        </button>
+                    </td>
+                `;
+                salaryTableBody.appendChild(row);
+            });
+        }
+
+        // --- Cập nhật FP & Ghi chú tự động (Debounced) ---
+        let timeoutId;
+        salaryTableBody.addEventListener('input', (e) => {
+            if(!e.target.classList.contains('salary-note-input') && !e.target.classList.contains('fp-input')) return;
+            
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(async () => {
+                const weekId = weekSelector.value;
+                if (!weekId) return;
+                const officerId = e.target.dataset.id;
+                const dataToSave = {};
+
+                if (e.target.classList.contains('salary-note-input')) {
+                    dataToSave[officerId] = e.target.value.trim();
+                } else if (e.target.classList.contains('fp-input')) {
+                    dataToSave[officerId + '_fp'] = e.target.value.trim();
+                }
+                
+                try {
+                    await setDoc(doc(db, notesCollectionName, weekId), dataToSave, { merge: true });
+                } catch (error) { console.error("Lỗi lưu tự động:", error); }
+            }, 500); // Đợi 500ms sau khi ngừng gõ mới lưu
+        });
+
+        salaryTableBody.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.clear-data-btn');
+            if(!btn) return;
+            const officerId = btn.dataset.id;
+            const weekId = weekSelector.value;
+            
+            const row = btn.closest('tr');
+            const fp = row.querySelector('.fp-input');
+            const note = row.querySelector('.salary-note-input');
+            if(fp) fp.value = '';
+            if(note) note.value = '';
+
+            try {
+                const data = {};
+                data[officerId] = '';
+                data[officerId + '_fp'] = '';
+                await setDoc(doc(db, notesCollectionName, weekId), data, { merge: true });
+            } catch(e) { console.error(e); }
+        });
+
+        weekSelector.addEventListener('change', updateSalaryView);
+        salaryUnitFilter.addEventListener('change', updateSalaryView);
+
+        // --- CRUD Sĩ Quan (Thêm, Sửa, Xóa) ---
+        addOfficerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang Xử Lý...';
+            
+            try {
+                await addDoc(collection(db, rosterCollectionName), {
+                    name: document.getElementById('officerName').value.trim(),
+                    uid: document.getElementById('officerUID').value.trim(),
+                    rank: document.getElementById('officerRank').value,
+                    position: document.getElementById('officerPosition').value,
+                    unit: document.getElementById('officerUnit').value,
+                    baseSalary: parseFloat(document.getElementById('officerBaseSalary').value) || 0,
+                    bonus: parseFloat(document.getElementById('officerBonus').value) || 0,
+                    createdAt: serverTimestamp()
+                });
+                addOfficerForm.reset();
+            } catch (error) { console.error(error); } 
+            finally { btn.disabled = false; btn.innerHTML = originalHTML; }
+        });
+
+        rosterTableBody.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-btn');
+            const deleteBtn = e.target.closest('.delete-btn');
+            
+            if(editBtn) {
+                const id = editBtn.dataset.id;
+                const o = allOfficers.find(x => x.id === id);
+                if(o) {
+                    document.getElementById('editOfficerId').value = o.id;
+                    document.getElementById('editOfficerName').value = o.name;
+                    document.getElementById('editOfficerUID').value = o.uid;
+                    document.getElementById('editOfficerRank').value = o.rank;
+                    document.getElementById('editOfficerPosition').value = o.position;
+                    document.getElementById('editOfficerUnit').value = o.unit;
+                    document.getElementById('editOfficerBaseSalary').value = o.baseSalary;
+                    document.getElementById('editOfficerBonus').value = o.bonus;
+                    editModal.classList.add('active');
+                }
+            } else if (deleteBtn) {
+                idToDelete = deleteBtn.dataset.id;
+                deleteModal.classList.add('active');
+            }
+        });
+
+        // Xử lý Form Cập nhật
+        editOfficerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editOfficerId').value;
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true; btn.innerHTML = 'Đang lưu...';
+            try {
+                await updateDoc(doc(db, rosterCollectionName, id), {
+                    name: document.getElementById('editOfficerName').value.trim(),
+                    rank: document.getElementById('editOfficerRank').value,
+                    position: document.getElementById('editOfficerPosition').value,
+                    unit: document.getElementById('editOfficerUnit').value,
+                    baseSalary: parseFloat(document.getElementById('editOfficerBaseSalary').value) || 0,
+                    bonus: parseFloat(document.getElementById('editOfficerBonus').value) || 0,
+                });
+                editModal.classList.remove('active');
+            } catch (err) { console.error(err); }
+            finally { btn.disabled = false; btn.innerHTML = 'Lưu Thay Đổi'; }
+        });
+
+        const closeEditModals = () => editModal.classList.remove('active');
+        document.getElementById('closeEditModalBtn').addEventListener('click', closeEditModals);
+        document.getElementById('closeEditModalIcon').addEventListener('click', closeEditModals);
+        editModal.addEventListener('click', (e) => { if(e.target === editModal) closeEditModals(); });
+
+        // Xử lý Form Xóa
+        const closeDeleteModal = () => { deleteModal.classList.remove('active'); idToDelete = null; };
+        document.getElementById('cancelDeleteBtn').addEventListener('click', closeDeleteModal);
+        deleteModal.addEventListener('click', (e) => { if(e.target === deleteModal) closeDeleteModal(); });
+
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async (e) => {
+            if(!idToDelete) return;
+            const btn = e.target;
+            btn.disabled = true; btn.innerHTML = 'Đang Xóa...';
+            try {
+                await deleteDoc(doc(db, rosterCollectionName, idToDelete));
+                closeDeleteModal();
+            } catch (err) { console.error(err); }
+            finally { btn.disabled = false; btn.innerHTML = 'Xóa Ngay'; }
+        });
+
+        // --- Bắt Chụp Hình (Khắc phục lỗi mờ của kính) ---
+        document.getElementById('captureSalaryBtn').addEventListener('click', async () => {
+            const container = document.getElementById('salary-sheet-container');
+            const noCaptureCols = container.querySelectorAll('.no-capture');
+            
+            // Xóa background trong suốt, đặt nền đặc cho html2canvas
+            container.style.background = '#0f172a'; // Tông Slate-900 đồng màu
+            container.style.border = 'none';
+            noCaptureCols.forEach(el => el.style.display = 'none'); // Ẩn nút xóa
+
+            try {
+                const canvas = await html2canvas(container, {
+                    useCORS: true, 
+                    backgroundColor: '#0f172a',
+                    scale: 2 // Xuất ảnh sắc nét hơn
+                });
+                
+                const link = document.createElement('a');
+                link.download = `LSPD-BangLuong-${weekSelector.value}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error("Lỗi xuất ảnh:", error);
+            } finally {
+                // Khôi phục UI
+                container.style.background = '';
+                container.style.border = '';
+                noCaptureCols.forEach(el => el.style.display = '');
+            }
+        });
+
+    </script>
+</body>
+</html>
