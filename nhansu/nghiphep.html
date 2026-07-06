@@ -246,15 +246,14 @@
         import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Cấu hình Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
-            authDomain: "alook-26a1f.firebaseapp.com",
-            projectId: "alook-26a1f",
-            storageBucket: "alook-26a1f.appspot.com",
-            messagingSenderId: "201575321450",
-            appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
-        };
-
+       const firebaseConfig = {
+    apiKey: "AIzaSyDqrNSm3VX_yNWyJI9_1WkOSh6jQrLADrA",
+    authDomain: "lspd-9df02.firebaseapp.com",
+    projectId: "lspd-9df02",
+    storageBucket: "lspd-9df02.firebasestorage.app",
+    messagingSenderId: "11728695203",
+    appId: "1:11728695203:web:44e134b91bdbecd3143416"
+};
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
