@@ -1,0 +1,1112 @@
+<!DOCTYPE html><html lang="vi"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSPD - Cơ sở dữ liệu Bộ luật Hình sự San Andreas</title>
+    <style>
+        :root {
+            /* MÀU SẮC GIAO DIỆN MỚI TỪ HÌNH ẢNH */
+            --bg-main: #0d2134;     
+            --bg-card: #14314c;     
+            --bg-sidebar: #091724;  
+            
+            --text-primary: #f3f4f6;
+            --text-secondary: #a3b2c2;
+            --accent-gold: #c5a880;
+            --accent-blue: #3b82f6;
+            --border-color: #1e4566; 
+            --felony-color: #ef4444;
+            --misdemeanor-color: #f59e0b;
+            --infraction-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) var(--bg-sidebar);
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Tùy chỉnh Scrollbar cho Chrome/Edge */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-sidebar); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+
+        /* Sidebar Styling (Danh mục) */
+        .sidebar {
+            width: 300px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .lspd-badge-container { width: 55px; height: 55px; flex-shrink: 0; }
+        .sidebar-header h1 { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-primary); }
+        .sidebar-header p { font-size: 11px; color: var(--accent-gold); font-weight: 600; margin-top: 4px; }
+
+        .category-list { list-style: none; overflow-y: auto; flex: 1; padding: 12px; }
+        .category-item { padding: 12px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; transition: all 0.2s ease; }
+        .category-item:hover { background-color: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+        .category-item.active { background-color: rgba(197, 168, 128, 0.15); color: var(--accent-gold); border-left: 3px solid var(--accent-gold); }
+
+        /* Main Content Container */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 5;
+            overflow: hidden;
+        }
+
+        /* Watermark - Căn chuẩn giữa khu vực Content */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px;
+            height: 700px;
+            opacity: 0.04;
+            pointer-events: none;
+            z-index: 0; /* Nằm dưới text */
+        }
+
+        /* Top Bar & Search Layout */
+        .top-navbar {
+            padding: 15px 40px;
+            background-color: rgba(9, 23, 36, 0.9);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 40px;
+            position: relative;
+            z-index: 999;
+        }
+
+        .search-container { position: relative; flex: 1; max-width: 600px; }
+        .search-box {
+            width: 100%;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px 16px 14px 44px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .search-box:focus { border-color: var(--accent-gold); box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.2); }
+        .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; fill: var(--text-secondary); }
+
+        .suggestions-panel { position: absolute; top: 100%; left: 0; right: 0; background-color: var(--bg-sidebar); border: 1px solid var(--border-color); border-radius: 8px; margin-top: 8px; max-height: 400px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 15px 30px rgba(0, 0, 0, 0.7); }
+        .suggestion-item { padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: background-color 0.2s; }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background-color: var(--bg-card); }
+        .suggestion-title { font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 4px; color: var(--accent-gold); }
+        .suggestion-desc { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .top-banner-logo { height: 45px; object-fit: contain; }
+
+        .badge-type { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+        .badge-felony { background-color: rgba(239, 68, 68, 0.15); color: var(--felony-color); }
+        .badge-misdemeanor { background-color: rgba(245, 158, 11, 0.15); color: var(--misdemeanor-color); }
+        .badge-infraction { background-color: rgba(16, 185, 129, 0.15); color: var(--infraction-color); }
+        .badge-prelude { background-color: rgba(197, 168, 128, 0.15); color: var(--accent-gold); }
+
+        /* Dynamic Content View Area */
+        .content-body { flex: 1; padding: 40px; overflow-y: auto; z-index: 10; position: relative; }
+        .section-header { margin-bottom: 24px; border-bottom: 2px solid var(--border-color); padding-bottom: 12px; }
+        .section-header h2 { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+
+        /* Grid / Layout Cards */
+        .cards-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .prelude-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+
+        .law-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 6px;
+            padding: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        .law-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.4); border-color: #3b5b82; }
+        .law-card.highlight { animation: highlight-pulse 2s ease-in-out; border-color: var(--accent-gold); }
+
+        @keyframes highlight-pulse {
+            0% { box-shadow: 0 0 0 0px rgba(197, 168, 128, 0.5); }
+            50% { box-shadow: 0 0 0 10px rgba(197, 168, 128, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(197, 168, 128, 0); }
+        }
+
+        .law-card.Felony { border-left-color: var(--felony-color); }
+        .law-card.Misdemeanor { border-left-color: var(--misdemeanor-color); }
+        .law-card.Infraction { border-left-color: var(--infraction-color); }
+
+        .law-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .law-code-title { display: flex; align-items: center; gap: 12px; }
+        .law-code { font-weight: 700; color: var(--bg-sidebar); background: var(--accent-gold); font-size: 13px; padding: 4px 10px; border-radius: 4px; }
+        .law-title { font-size: 17px; font-weight: 600; }
+
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-add { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); border: 1px solid var(--accent-blue); padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase;}
+        .btn-add:hover { background: var(--accent-blue); color: #fff; }
+
+        .law-stats { display: flex; gap: 20px; font-size: 13px; margin-bottom: 14px; background: rgba(0, 0, 0, 0.3); padding: 10px 14px; border-radius: 4px; width: max-content; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-item span:first-child { color: var(--text-secondary); margin-right: 6px; }
+        .stat-item span:last-child { font-weight: 600; }
+        .stat-fine { color: #fca5a5; }
+        .stat-time { color: #93c5fd; }
+        .law-description { font-size: 14px; line-height: 1.7; color: var(--text-secondary); }
+
+        .prelude-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 18px; }
+        .prelude-term { font-weight: 700; color: var(--accent-gold); font-size: 15px; margin-bottom: 8px; border-bottom: 1px dashed var(--border-color); padding-bottom: 6px; }
+        .prelude-definition { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+        /* CALCULATOR SIDEBAR RIGHT */
+        .calculator-panel {
+            width: 360px;
+            background-color: var(--bg-sidebar);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .calc-header {
+            padding: 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .calc-header h3 { font-size: 15px; color: var(--accent-gold); text-transform: uppercase; }
+        .btn-clear { background: transparent; border: 1px solid #ef4444; color: #ef4444; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .btn-clear:hover { background: #ef4444; color: #fff; }
+
+        .calc-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .calc-empty { text-align: center; color: var(--text-secondary); font-size: 13px; margin-top: 50px; font-style: italic;}
+
+        .calc-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .calc-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .calc-item-name { font-size: 13px; font-weight: 700; color: var(--accent-blue); width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        .qty-controls { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.4); padding: 3px 6px; border-radius: 4px;}
+        .qty-controls button { background: var(--border-color); color: #fff; border: none; width: 22px; height: 22px; border-radius: 3px; cursor: pointer; font-weight: bold; }
+        .qty-controls button:hover { background: var(--accent-gold); color: #000; }
+        .qty-controls span { font-size: 13px; font-weight: bold; min-width: 15px; text-align: center;}
+
+        .calc-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .calc-input-group label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+        .calc-input-group input { 
+            width: 100%; background: var(--bg-main); border: 1px solid var(--border-color); 
+            color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 13px; outline: none; 
+        }
+        .calc-input-group input:focus { border-color: var(--accent-gold); }
+
+        .calc-footer {
+            padding: 20px;
+            background: var(--bg-card);
+            border-top: 2px solid var(--accent-gold);
+        }
+        .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 15px; font-weight: bold;}
+        .total-row:last-child { margin-bottom: 0; font-size: 17px; }
+        .total-fine-val { color: #fca5a5; }
+        .total-jail-val { color: #93c5fd; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Trái -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <a href="/index.html" class="lspd-badge-container">
+                <img src="/images/IMG_7458.png" alt="LSPD Logo" style="width: 100%; height: 100%; object-fit: contain;">
+            </a>
+            <div>
+                <h1>BỘ LUẬT HÌNH SỰ</h1>
+                <p>SỞ TƯ PHÁP SAN ANDREAS</p>
+            </div>
+        </div>
+        <ul class="category-list" id="categoryList"><li class="category-item active">Lời Mở Đầu (Prelude)</li><li class="category-item ">Phần 1: Xâm Phạm Tư Pháp Công</li><li class="category-item ">Phần 2: Xâm Phạm Con Người</li><li class="category-item ">Phần 3: Xâm Phạm Thuần Phong Mỹ Tục</li><li class="category-item ">Phần 4: Xâm Phạm Sức Khỏe & An Toàn</li><li class="category-item ">Phần 5: Xâm Phạm Trật Tự Công Cộng</li><li class="category-item ">Phần 6: Các Tội Xâm Phạm Tài Sản</li><li class="category-item ">Phần 7: Phá Hoại Ác Ý</li><li class="category-item ">Phần 8: Các Tội Phạm Khác</li><li class="category-item ">Phần 9: Các Chất Cấm (Ma Túy)</li><li class="category-item ">Phần 10: Luật Săn Bắn & Thủy Sản</li><li class="category-item ">Phần 11: Đưa Hàng Cấm Vào Trại Giam</li><li class="category-item ">Phần 12: Bộ Luật Đô Thị</li><li class="category-item ">Luật Giao Thông Đường Bộ / Phương Tiện</li><li class="category-item ">Phụ Lục: Phân Loại Chất Cấm (Ma Túy)</li></ul>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Logo chìm chỉ đặt ở main content -->
+        <img class="watermark" src="/images/SA_1.PNG" alt="San Andreas State Seal">
+
+        <nav class="top-navbar">
+            <div class="search-container">
+                <svg class="search-icon" viewBox="0 0 24 24">
+                    <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path>
+                </svg>
+                <input type="text" class="search-box" id="searchBox" placeholder="Tra cứu nhanh tội danh, mã luật (VD: PC 187, CVC, Lừa đảo)...">
+                <div class="suggestions-panel" id="suggestionsPanel"></div>
+            </div>
+            <img class="top-banner-logo" src="/images/13_LSPD.PNG" alt="13 Newton LSPD Banner">
+        </nav>
+
+        <div class="content-body" id="contentBody"><div class="section-header"><h2>Lời Mở Đầu (Prelude)</h2></div><div class="prelude-grid">
+                        <div class="prelude-card">
+                            <div class="prelude-term">Cá nhân / Pháp nhân</div>
+                            <div class="prelude-definition">Bao gồm cả pháp nhân (công ty/tổ chức) cũng như thể nhân (con người tự nhiên).</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Người đại diện / Đại lý</div>
+                            <div class="prelude-definition">Một nhân viên hoặc người được ủy quyền của một doanh nghiệp hoặc tổ chức có khả năng đưa ra quyết định thay mặt cho chủ sở hữu.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Quận / Hạt</div>
+                            <div class="prelude-definition">Bao gồm cả thành phố và quận/hạt.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Văn bản viết</div>
+                            <div class="prelude-definition">Bao gồm bản in và bản đánh máy.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Lời tuyên thệ</div>
+                            <div class="prelude-definition">Bao gồm lời cam kết hoặc lời khai xác nhận.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Làm chứng / Khai báo bằng lời</div>
+                            <div class="prelude-definition">Mọi hình thức tuyên bố bằng lời nói dưới sự tuyên thệ hoặc cam kết xác nhận.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Cung khai bằng văn bản</div>
+                            <div class="prelude-definition">Mọi lời khai bằng văn bản dưới sự tuyên thệ hoặc cam kết xác nhận.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Chữ ký</div>
+                            <div class="prelude-definition">Bao gồm cả điểm chỉ/dấu hiệu thay thế khi một người không thể viết, với điều kiện có sự chứng kiến hợp lệ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Cố ý</div>
+                            <div class="prelude-definition">Hàm ý mục đích hoặc sự sẵn sàng thực hiện một hành động hoặc không hành động, mà không yêu cầu chủ đích vi phạm pháp luật hay gây tổn hại.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Bất cẩn, Cẩu thả, Thiếu thận trọng</div>
+                            <div class="prelude-definition">Sự thiếu chú ý đối với các hậu quả có thể xảy ra mà một người thận trọng thông thường sẽ để tâm trong các công việc của chính họ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Một cách vụ lợi / Trục lợi</div>
+                            <div class="prelude-definition">Ý đồ sai trái nhằm đạt được lợi thế cho bản thân hoặc cho người khác.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Ác ý, Có chủ tâm xấu</div>
+                            <div class="prelude-definition">Mong muốn làm phiền, quấy rầy, gây tổn hại cho người khác, hoặc ý định thực hiện một hành vi sai trái.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Biết rõ / Có nhận thức</div>
+                            <div class="prelude-definition">Nhận thức được sự tồn tại của các sự kiện khiến một hành vi hoặc sự thiếu sót thuộc phạm vi điều chỉnh của bộ luật này, mà không yêu cầu phải biết hành vi đó là bất hợp pháp.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Hối lộ</div>
+                            <div class="prelude-definition">Bất cứ thứ gì có giá trị hoặc lợi thế, được đưa hoặc nhận với ý đồ vụ lợi nhằm tác động trái pháp luật đến một người đang thi hành công vụ hoặc tư cách chính thức.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tàu thuyền / Phương tiện thủy</div>
+                            <div class="prelude-definition">Bao gồm tất cả các loại tàu, tàu chạy hơi nước, thuyền kênh, xà lan và các cấu trúc được cải tạo để điều hướng thủy, trừ khi có định nghĩa khác trong các điều khoản cụ thể.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Sĩ quan thi hành pháp luật</div>
+                            <div class="prelude-definition">Bất kỳ sĩ quan thực thi pháp luật nào làm việc dưới sự giám sát của một cơ quan thực thi pháp luật được công nhận.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Thẩm phán dự thẩm / Quan tòa</div>
+                            <div class="prelude-definition">Các thẩm phán của Tòa án Tối cao, Tòa Phúc thẩm và Tòa Thượng thẩm.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Viên chức hành pháp / Quan chức cấp cao</div>
+                            <div class="prelude-definition">Các quan chức dân cử, Thẩm phán, Sĩ quan bảo vệ trật tự, và bất kỳ vị trí nào tham gia vào việc hoạch định chính sách lớn trong Tiểu bang.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Viên chức hành chính / Thư ký công vụ</div>
+                            <div class="prelude-definition">Nhân viên chính phủ thực hiện các nhiệm vụ theo quy định mà không dùng sự phán đoán hay quyền tự quyết của riêng họ; ví dụ: thư ký hoặc người xử lý hồ sơ chính phủ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Công chức / Quan chức công</div>
+                            <div class="prelude-definition">Sĩ quan bảo vệ trật tự, lực lượng Cứu hỏa & Cấp cứu y tế (EMS), quan tòa, viên chức hành pháp và viên chức hành chính.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tài sản</div>
+                            <div class="prelude-definition">Bao gồm cả bất động sản và động sản (tài sản cá nhân).</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Bất động sản</div>
+                            <div class="prelude-definition">Đồng nhất/bao hàm đất đai, nhà ở gắn liền với đất, và các quyền tài sản thừa kế gắn liền với đất.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Cơ sở giáo dục</div>
+                            <div class="prelude-definition">Trường phổ thông, đại học, học viện đào tạo, hoặc cơ sở nơi hoạt động giáo dục được tiến hành vì mục đích học tập.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tài sản chính phủ / Công sản</div>
+                            <div class="prelude-definition">Bao gồm bất kỳ tài sản nào thuộc sở hữu của Tiểu bang.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Động sản / Tài sản cá nhân</div>
+                            <div class="prelude-definition">Bao gồm tiền, hàng hóa, vật dụng cá nhân, quyền đòi nợ (things in action), và bằng chứng nợ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tháng</div>
+                            <div class="prelude-definition">Có nghĩa là một tháng theo lịch dương, trừ khi có quy định khác.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Ban ngày</div>
+                            <div class="prelude-definition">Khoảng thời gian giữa lúc mặt trời mọc và mặt trời lặn.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Ban đêm</div>
+                            <div class="prelude-definition">Khoảng thời gian giữa lúc mặt trời lặn và mặt trời mọc.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Di chúc</div>
+                            <div class="prelude-definition">Bao gồm cả phụ lục di chúc (codicil).</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Lệnh tòa / Trát của tòa</div>
+                            <div class="prelude-definition">Một mệnh lệnh hoặc chỉ thị bằng văn bản, được ban hành nhân danh nhân dân, tòa án hoặc viên chức tư pháp.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Trát đòi / Quy trình tố tụng</div>
+                            <div class="prelude-definition">Lệnh tòa hoặc trát triệu tập được ban hành trong các thủ tục tố tụng tư pháp.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Con dấu</div>
+                            <div class="prelude-definition">Bao gồm vết in của con dấu trên giấy hoặc chất liệu khác, hoặc chữ viết 'seal' (dấu) đối với cá nhân tư nhân.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tiểu bang / Nhà nước</div>
+                            <div class="prelude-definition">Bao gồm Tiểu bang California, các Quận/Hạt và Thành phố trực thuộc.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Hoa Kỳ</div>
+                            <div class="prelude-definition">Có thể bao gồm Đặc khu Columbia và các vùng lãnh thổ thuộc Hoa Kỳ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Điều / Mục</div>
+                            <div class="prelude-definition">Đề cập đến một điều/mục của bộ luật này, trừ khi một bộ luật hoặc đạo luật khác được nêu rõ.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Lập hồ sơ bắt giữ (Booking)</div>
+                            <div class="prelude-definition">Việc ghi nhận vụ bắt giữ vào hồ sơ cảnh sát, bao gồm lấy dấu vân tay và chụp ảnh.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Vợ / Chồng</div>
+                            <div class="prelude-definition">Bao gồm cả đối tác chung sống đã đăng ký hợp pháp.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tội phạm hoặc Vi phạm công</div>
+                            <div class="prelude-definition">Một hành vi thực hiện hoặc không thực hiện vi phạm pháp luật cấm đoán hoặc bắt buộc hành vi đó, có thể bị xử phạt bằng tử hình, tù giam, phạt tiền, bãi nhiệm hoặc tước quyền giữ chức vụ công.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Trọng tội (Tội nghiêm trọng/Felony)</div>
+                            <div class="prelude-definition">Tội phạm có thể bị xử phạt bằng tử hình, tù giam tại nhà tù tiểu bang, hoặc giam giữ tại nhà tù quận theo các quy định cụ thể.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Tội nhẹ (Misdeameanor)</div>
+                            <div class="prelude-definition">Bất kỳ tội phạm hoặc vi phạm công nào không phải là trọng tội hoặc không được phân loại là vi phạm vi cảnh.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Vi phạm vi cảnh / hành chính (Infraction)</div>
+                            <div class="prelude-definition">Một cấp độ vi phạm biệt lập với trọng tội và tội nhẹ (thường chỉ bị phạt tiền).</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">Xe địa hình (ATV, Sanchez,...)</div>
+                            <div class="prelude-definition">Bất kỳ loại xe nào được thiết kế để sử dụng ngoài đường giao thông công cộng cho mục đích nông nghiệp hoặc giải trí và vượt quá tốc độ 60 dặm/giờ (MPH). Các xe này vẫn phải đăng ký hợp lệ và gắn biển nhận diện. Xe địa hình vẫn phải tuân thủ các luật lệ giao thông và đường bộ thích hợp trừ khi có quy định khác.</div>
+                        </div>
+                    
+                        <div class="prelude-card">
+                            <div class="prelude-term">HUT (Tạm giam chờ xét xử)</div>
+                            <div class="prelude-definition">Tạm giam cho đến khi mở phiên tòa xét xử.</div>
+                        </div>
+                    </div></div>
+    </main>
+
+    <!-- Máy tính hình sự bên phải -->
+    <aside class="calculator-panel">
+        <div class="calc-header">
+            <h3>Máy Tính Hình Sự</h3>
+            <button class="btn-clear" onclick="clearCalc()">Làm mới</button>
+        </div>
+        <div class="calc-list" id="calcList">
+            <div class="calc-empty">Chưa có tội danh nào được chọn.<br>Bấm phím [+] ở thẻ luật để thêm.</div>
+        </div>
+        <div class="calc-footer">
+            <div class="total-row"><span>Tổng phạt:</span> <span id="totalFine" class="total-fine-val">$0</span></div>
+            <div class="total-row"><span>Tổng án tù:</span> <span id="totalJail" class="total-jail-val">0 Phút</span></div>
+        </div>
+    </aside>
+
+    <script>
+        const dataset = {
+            prelude: {
+                title: "Lời Mở Đầu (Prelude)",
+                type: "prelude",
+                items: [
+                    { term: "Cá nhân / Pháp nhân", def: "Bao gồm cả pháp nhân (công ty/tổ chức) cũng như thể nhân (con người tự nhiên)." },
+                    { term: "Người đại diện / Đại lý", def: "Một nhân viên hoặc người được ủy quyền của một doanh nghiệp hoặc tổ chức có khả năng đưa ra quyết định thay mặt cho chủ sở hữu." },
+                    { term: "Quận / Hạt", def: "Bao gồm cả thành phố và quận/hạt." },
+                    { term: "Văn bản viết", def: "Bao gồm bản in và bản đánh máy." },
+                    { term: "Lời tuyên thệ", def: "Bao gồm lời cam kết hoặc lời khai xác nhận." },
+                    { term: "Làm chứng / Khai báo bằng lời", def: "Mọi hình thức tuyên bố bằng lời nói dưới sự tuyên thệ hoặc cam kết xác nhận." },
+                    { term: "Cung khai bằng văn bản", def: "Mọi lời khai bằng văn bản dưới sự tuyên thệ hoặc cam kết xác nhận." },
+                    { term: "Chữ ký", def: "Bao gồm cả điểm chỉ/dấu hiệu thay thế khi một người không thể viết, với điều kiện có sự chứng kiến hợp lệ." },
+                    { term: "Cố ý", def: "Hàm ý mục đích hoặc sự sẵn sàng thực hiện một hành động hoặc không hành động, mà không yêu cầu chủ đích vi phạm pháp luật hay gây tổn hại." },
+                    { term: "Bất cẩn, Cẩu thả, Thiếu thận trọng", def: "Sự thiếu chú ý đối với các hậu quả có thể xảy ra mà một người thận trọng thông thường sẽ để tâm trong các công việc của chính họ." },
+                    { term: "Một cách vụ lợi / Trục lợi", def: "Ý đồ sai trái nhằm đạt được lợi thế cho bản thân hoặc cho người khác." },
+                    { term: "Ác ý, Có chủ tâm xấu", def: "Mong muốn làm phiền, quấy rầy, gây tổn hại cho người khác, hoặc ý định thực hiện một hành vi sai trái." },
+                    { term: "Biết rõ / Có nhận thức", def: "Nhận thức được sự tồn tại của các sự kiện khiến một hành vi hoặc sự thiếu sót thuộc phạm vi điều chỉnh của bộ luật này, mà không yêu cầu phải biết hành vi đó là bất hợp pháp." },
+                    { term: "Hối lộ", def: "Bất cứ thứ gì có giá trị hoặc lợi thế, được đưa hoặc nhận với ý đồ vụ lợi nhằm tác động trái pháp luật đến một người đang thi hành công vụ hoặc tư cách chính thức." },
+                    { term: "Tàu thuyền / Phương tiện thủy", def: "Bao gồm tất cả các loại tàu, tàu chạy hơi nước, thuyền kênh, xà lan và các cấu trúc được cải tạo để điều hướng thủy, trừ khi có định nghĩa khác trong các điều khoản cụ thể." },
+                    { term: "Sĩ quan thi hành pháp luật", def: "Bất kỳ sĩ quan thực thi pháp luật nào làm việc dưới sự giám sát của một cơ quan thực thi pháp luật được công nhận." },
+                    { term: "Thẩm phán dự thẩm / Quan tòa", def: "Các thẩm phán của Tòa án Tối cao, Tòa Phúc thẩm và Tòa Thượng thẩm." },
+                    { term: "Viên chức hành pháp / Quan chức cấp cao", def: "Các quan chức dân cử, Thẩm phán, Sĩ quan bảo vệ trật tự, và bất kỳ vị trí nào tham gia vào việc hoạch định chính sách lớn trong Tiểu bang." },
+                    { term: "Viên chức hành chính / Thư ký công vụ", def: "Nhân viên chính phủ thực hiện các nhiệm vụ theo quy định mà không dùng sự phán đoán hay quyền tự quyết của riêng họ; ví dụ: thư ký hoặc người xử lý hồ sơ chính phủ." },
+                    { term: "Công chức / Quan chức công", def: "Sĩ quan bảo vệ trật tự, lực lượng Cứu hỏa & Cấp cứu y tế (EMS), quan tòa, viên chức hành pháp và viên chức hành chính." },
+                    { term: "Tài sản", def: "Bao gồm cả bất động sản và động sản (tài sản cá nhân)." },
+                    { term: "Bất động sản", def: "Đồng nhất/bao hàm đất đai, nhà ở gắn liền với đất, và các quyền tài sản thừa kế gắn liền với đất." },
+                    { term: "Cơ sở giáo dục", def: "Trường phổ thông, đại học, học viện đào tạo, hoặc cơ sở nơi hoạt động giáo dục được tiến hành vì mục đích học tập." },
+                    { term: "Tài sản chính phủ / Công sản", def: "Bao gồm bất kỳ tài sản nào thuộc sở hữu của Tiểu bang." },
+                    { term: "Động sản / Tài sản cá nhân", def: "Bao gồm tiền, hàng hóa, vật dụng cá nhân, quyền đòi nợ (things in action), và bằng chứng nợ." },
+                    { term: "Tháng", def: "Có nghĩa là một tháng theo lịch dương, trừ khi có quy định khác." },
+                    { term: "Ban ngày", def: "Khoảng thời gian giữa lúc mặt trời mọc và mặt trời lặn." },
+                    { term: "Ban đêm", def: "Khoảng thời gian giữa lúc mặt trời lặn và mặt trời mọc." },
+                    { term: "Di chúc", def: "Bao gồm cả phụ lục di chúc (codicil)." },
+                    { term: "Lệnh tòa / Trát của tòa", def: "Một mệnh lệnh hoặc chỉ thị bằng văn bản, được ban hành nhân danh nhân dân, tòa án hoặc viên chức tư pháp." },
+                    { term: "Trát đòi / Quy trình tố tụng", def: "Lệnh tòa hoặc trát triệu tập được ban hành trong các thủ tục tố tụng tư pháp." },
+                    { term: "Con dấu", def: "Bao gồm vết in của con dấu trên giấy hoặc chất liệu khác, hoặc chữ viết 'seal' (dấu) đối với cá nhân tư nhân." },
+                    { term: "Tiểu bang / Nhà nước", def: "Bao gồm Tiểu bang California, các Quận/Hạt và Thành phố trực thuộc." },
+                    { term: "Hoa Kỳ", def: "Có thể bao gồm Đặc khu Columbia và các vùng lãnh thổ thuộc Hoa Kỳ." },
+                    { term: "Điều / Mục", def: "Đề cập đến một điều/mục của bộ luật này, trừ khi một bộ luật hoặc đạo luật khác được nêu rõ." },
+                    { term: "Lập hồ sơ bắt giữ (Booking)", def: "Việc ghi nhận vụ bắt giữ vào hồ sơ cảnh sát, bao gồm lấy dấu vân tay và chụp ảnh." },
+                    { term: "Vợ / Chồng", def: "Bao gồm cả đối tác chung sống đã đăng ký hợp pháp." },
+                    { term: "Tội phạm hoặc Vi phạm công", def: "Một hành vi thực hiện hoặc không thực hiện vi phạm pháp luật cấm đoán hoặc bắt buộc hành vi đó, có thể bị xử phạt bằng tử hình, tù giam, phạt tiền, bãi nhiệm hoặc tước quyền giữ chức vụ công." },
+                    { term: "Trọng tội (Tội nghiêm trọng/Felony)", def: "Tội phạm có thể bị xử phạt bằng tử hình, tù giam tại nhà tù tiểu bang, hoặc giam giữ tại nhà tù quận theo các quy định cụ thể." },
+                    { term: "Tội nhẹ (Misdeameanor)", def: "Bất kỳ tội phạm hoặc vi phạm công nào không phải là trọng tội hoặc không được phân loại là vi phạm vi cảnh." },
+                    { term: "Vi phạm vi cảnh / hành chính (Infraction)", def: "Một cấp độ vi phạm biệt lập với trọng tội và tội nhẹ (thường chỉ bị phạt tiền)." },
+                    { term: "Xe địa hình (ATV, Sanchez,...)", def: "Bất kỳ loại xe nào được thiết kế để sử dụng ngoài đường giao thông công cộng cho mục đích nông nghiệp hoặc giải trí và vượt quá tốc độ 60 dặm/giờ (MPH). Các xe này vẫn phải đăng ký hợp lệ và gắn biển nhận diện. Xe địa hình vẫn phải tuân thủ các luật lệ giao thông và đường bộ thích hợp trừ khi có quy định khác." },
+                    { term: "HUT (Tạm giam chờ xét xử)", def: "Tạm giam cho đến khi mở phiên tòa xét xử." }
+                ]
+            },
+            part1: {
+                title: "Phần 1: Xâm Phạm Tư Pháp Công",
+                type: "law",
+                items: [
+                    { id: "PC 102", name: "Giải cứu tội phạm", class: "Misdemeanor", fine: "$100,000.00", jail: "4 Tháng", desc: "Bất kỳ ai cố ý làm hư hỏng, phá hủy, chiếm đoạt, cố gắng chiếm đoạt, hoặc hỗ trợ người khác chiếm đoạt từ quyền giam giữ/quản lý của bất kỳ sĩ quan hay cá nhân nào, đối với các tài sản cá nhân mà sĩ quan hay cá nhân đó đang phụ trách theo quy trình pháp luật." },
+                    { id: "PC 107", name: "Vượt ngục / Đào tẩu", class: "Felony", fine: "$200,000.00", jail: "60 Tháng", desc: "Tù nhân trốn thoát hoặc cố gắng trốn thoát khỏi quyền giam giữ của sĩ quan bảo vệ trật tự hoặc cơ sở quản lý của chính phủ." },
+                    { id: "PC 109", name: "Tiếp tay vượt ngục", class: "Felony", fine: "$150,000.00", jail: "24 Tháng", desc: "Người hỗ trợ tù nhân trốn thoát hoặc cố gắng trốn thoát khỏi cơ sở chính phủ, hoặc mang/gửi bất cứ vật dụng hữu ích nào cho tù nhân nhằm giúp họ đào tẩu." },
+                    { id: "PC 484", name: "Lừa đảo", class: "Misdemeanor", fine: "$75,000.00", jail: "6 Tháng", desc: "Người cung cấp chứng cứ mà họ biết rõ là giả mạo hoặc bị làm sai lệch cho một phiên tòa, lời cung khai, cuộc điều tra hoặc thẩm vấn. Hoặc người có ý đồ phạm tội lừa dối người khác để trục lợi tiền bạc hoặc cá nhân." },
+                    { id: "PC 136.1", name: "Đe dọa nhân chứng/Nạn nhân", class: "Misdemeanor", fine: "$35,000.00", jail: "4 Tháng", desc: "Người có hành vi ác ý đe dọa hoặc uy hiếp nạn nhân hoặc nhân chứng." },
+                    { id: "PC 182", name: "Âm mưu phạm tội", class: "Felony", fine: "$60,500.00", jail: "10 Tháng", desc: "Thỏa thuận/âm mưu thực hiện một tội phạm, gian dối và ác ý buộc tội người khác hoặc khiến người khác bị buộc tội. Gian dối khởi kiện hoặc duy trì bất kỳ vụ kiện, tố tụng nào. Lừa đảo chiếm đoạt tài sản bằng các phương thức phạm pháp, nhận tiền hoặc tài sản bằng lời khai gian hoặc lời hứa hảo. Thực hiện hành vi gây hại cho sức khỏe công cộng, đạo đức, hoặc làm sai lệch/cản trở công lý. Mức án tối đa lên tới 125 tháng." },
+                    { id: "PC 165", name: "Tham nhũng", class: "Misdemeanor", fine: "$90,000.00", jail: "12 Tháng", desc: "Bất kỳ công chức nào tự nguyện nhận hối lộ, không tuân thủ bổ phận, và/hoặc từ chối hoàn thành nhiệm vụ được giao." },
+                    { id: "PC 653", name: "Lạm dụng tổng đài 911", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Người cố ý và nhận thức rõ việc kích hoạt báo động giả, cản trở, hoặc làm sai lệch thông tin liên quan đến hệ thống khẩn cấp 911." },
+                    { id: "PC 186", name: "Trục lợi bất hợp pháp", class: "Felony", fine: "$140,000.00", jail: "48 Tháng", desc: "Cá nhân hoặc tổ chức thông qua các hoạt động phi pháp để tạo ra lợi nhuận bất hợp pháp." },
+                    { id: "PC 186.5", name: "Tổ chức tội phạm tống tiền", class: "Felony", fine: "$120,000.00", jail: "60 Tháng", desc: "Một chuỗi hành vi phạm tội có tổ chức bao gồm giết người, bắt cóc, cướp tài sản, hối lộ, tống tiền và phóng hỏa nhằm thu lợi bất chính." },
+                    { id: "PC 186.10", name: "Rửa tiền", class: "Felony", fine: "$125,000.00", jail: "12 Tháng", desc: "Người thực hiện hoặc cố gắng thực hiện giao dịch nhằm che giấu nguồn tiền phi pháp để 'làm sạch' tiền. Công tố viên phải chứng minh được hành vi và ý định phạm tội." },
+                    { id: "PC 503", name: "Tham ô / Biển thủ", class: "Felony", fine: "$300,000.00", jail: "12 Tháng", desc: "Hành vi chiếm đoạt tiền hoặc tài sản được giao phó dựa trên sự tín nhiệm bởi một người có ý đồ phạm tội." },
+                    { id: "PC 186.20", name: "Khủng bố đường phố / Băng đảng", class: "Felony", fine: "$460,000.00", jail: "24 Tháng", desc: "Người tích cực tham gia băng đảng tội phạm đường phố khi biết rõ các thành viên của băng đảng đang hoặc đã tham gia vào các hoạt động phạm tội có hệ thống, và cố ý thúc đẩy hoặc tiếp tay cho hành vi trọng tội của băng đảng đó. Phạt tối đa 96 tháng." },
+                    { id: "PC 185", name: "Ngụy trang phạm tội", class: "Misdemeanor", fine: "$65,000.00", jail: "6 Tháng", desc: "Đeo mặt nạ, râu giả, hoặc ngụy trang cá nhân để trốn tránh sự phát hiện, nhận dạng trong quá trình thực hiện tội phạm. Hoặc để lẩn trốn khi bị buộc tội, bắt giữ hoặc kết án." },
+                    { id: "PC 148(a)(1)-B", name: "Chống người thi hành công vụ có bạo lực", class: "Felony", fine: "$63,000.00", jail: "12 Tháng", desc: "Hành vi trái pháp luật khi cố ý chống đối, cản trở hoặc gây khó dễ cho công chức đang thi hành công vụ bằng bạo lực hoặc đe dọa dùng bạo lực." },
+                    { id: "PC 71", name: "Đe dọa công chức", class: "Felony", fine: "$85,000.00", jail: "18 Tháng", desc: "Đe dọa gây thương tích hoặc tổn hại tài sản gửi trực tiếp đến sĩ quan bảo vệ trật tự, nhân viên giáo dục hoặc công chức nhằm buộc họ thực hiện hoặc không thực hiện nhiệm vụ công vụ, khi lời đe dọa có tính khả thi rõ ràng." },
+                    { id: "PC 148(a)(1)", name: "Chống người thi hành công vụ", class: "Misdemeanor", fine: "$86,000.00", jail: "6 Tháng", desc: "Hành vi cố ý chống đối, trì hoãn, gây cản trở công chức đang thực hiện nhiệm vụ chính thức." }
+                ]
+            },
+            part2: {
+                title: "Phần 2: Xâm Phạm Con Người",
+                type: "law",
+                items: [
+                    { id: "PC 187", name: "Giết người", class: "Felony", fine: "$500,000.00", jail: "600 Tháng", desc: "Hành vi tước đoạt mạng sống của người khác trái pháp luật với sự mưu tính hoặc ác ý từ trước." },
+                    { id: "PC 187-LEO", name: "Giết sĩ quan thi hành pháp luật", class: "Felony", fine: "$500,000.00", jail: "600 Tháng", desc: "Bất kỳ người nào thực hiện hành vi giết hại một Sĩ quan bảo vệ trật tự." },
+                    { id: "PC 664-LEO", name: "Mưu sát sĩ quan thi hành pháp luật (Bất thành)", class: "Felony", fine: "$430,000.00", jail: "300 Tháng", desc: "Người cố gắng thực hiện hành vi giết sĩ quan bảo vệ trật tự nhưng bất thành (Không áp dụng cộng dồn hình phạt)." },
+                    { id: "PC 192", name: "Ngộ sát", class: "Felony", fine: "$164,000.00", jail: "60 Tháng", desc: "Làm chết người khác mà không có ác ý mưu tính trước. Mức phạt tối đa lên đến 300 tháng tù và 500.000 USD." },
+                    { id: "PC 203", name: "Cố ý gây thương tích nghiêm trọng (Hủy hoại thân thể)", class: "Felony", fine: "$240,000.00", jail: "48 Tháng", desc: "Hành vi ác ý và trái pháp luật tước bỏ bộ phận cơ thể của người khác, làm tàn phế, biến dạng, cắt lưỡi, chọc mù mắt, hoặc rạch mũi, tai, môi." },
+                    { id: "PC 206", name: "Tra tấn", class: "Felony", fine: "$320,000.00", jail: "48 Tháng", desc: "Hành vi cố ý gây đau đớn tột cùng về thể xác hoặc tinh thần nhằm mục đích trả thù, tống tiền, ép buộc hoặc thỏa mãn tâm lý tàn bạo, gây thương tích nghiêm trọng cho người khác." },
+                    { id: "PC 207", name: "Bắt cóc", class: "Felony", fine: "$180,000.00", jail: "36 Tháng", desc: "Bắt giữ, giam cầm, dụ dỗ, tống tiền hoặc mang người khác đi bằng bất kỳ hình thức nào nhằm đòi tiền chuộc, phần thưởng, hoặc tiếp tay cho hành vi đó. Phạt tối đa 180 tháng tù và 50.000 USD." },
+                    { id: "PC 236", name: "Bắt giữ người trái pháp luật", class: "Misdemeanor", fine: "$200,000.00", jail: "6 Tháng", desc: "Cố ý khống chế người khác mà không được sự đồng ý, xâm phạm nghiêm trọng quyền tự do và đặt họ vào rủi ro chấn thương thể chất. có thể nâng lên Trọng tội nếu dùng bạo lực (cộng thêm 10 tháng tù và phạt 1.000 USD)." },
+                    { id: "PC 211", name: "Cướp tài sản", class: "Felony", fine: "$110,000.00", jail: "20 Tháng", desc: "Chiếm đoạt tài sản cá nhân trong quyền sở hữu của người khác ngay trước mặt họ trái với ý muốn của họ, thực hiện thông qua vũ lực hoặc đe dọa." },
+                    { id: "PC 215", name: "Cướp phương tiện giao thông", class: "Felony", fine: "$70,000.00", jail: "24 Tháng", desc: "Hành vi chiếm đoạt xe cơ giới ngay trước mặt người lái xe hoặc hành khách trên xe trái với ý muốn của họ bằng vũ lực hoặc đe dọa nhằm tước đoạt quyền sở hữu tạm thời hay vĩnh viễn." },
+                    { id: "PC 664", name: "Mưu sát (Bất thành)", class: "Felony", fine: "$195,000.00", jail: "120 Tháng", desc: "Cố gắng tước đoạt mạng sống người khác với sự chủ tâm ác ý nhưng bất thành. Hình phạt tù và tiền sẽ tăng gấp đôi nếu nạn nhân là quan chức công." },
+                    { id: "PC 240", name: "Hành hung / Đe dọa dùng vũ lực", class: "Misdemeanor", fine: "$123,000.00", jail: "6 Tháng", desc: "Hành vi đe dọa hoặc nỗ lực trái pháp luật, kèm theo khả năng thực tế ngay lúc đó, nhằm gây thương tích bạo lực lên người khác." },
+                    { id: "PC 217.1", name: "Hành hung công chức", class: "Felony", fine: "$100,500.00", jail: "24 Tháng", desc: "Thực hiện hành vi hành hung mà nạn nhân là một công chức nhà nước." },
+                    { id: "PC 243(d)", name: "Cố ý gây thương tích nghiêm trọng", class: "Felony", fine: "$94,500.00", jail: "40 Tháng", desc: "Sử dụng vũ lực hoặc bạo lực trái pháp luật và cố ý gây ra chấn thương thể chất nghiêm trọng cho người khác." },
+                    { id: "PC 243(d)-LEO", name: "Cố ý gây thương tích cho sĩ quan thi hành pháp luật", class: "Felony", fine: "$95,000.00", jail: "50 Tháng", desc: "Hành vi tấn công bằng vũ khí chết người hoặc gây thương tích nghiêm trọng lên thể xác của một Sĩ quan bảo vệ trật tự." },
+                    { id: "PC 243(b)/(c)", name: "Xô xát / Gây thương tích cho sĩ quan", class: "Felony", fine: "$95,000.00", jail: "50 Tháng", desc: "Sử dụng bạo lực hoặc vũ lực xâm phạm thân thể mà nạn nhân là công chức đang thi hành nhiệm vụ." },
+                    { id: "PC 245(d)(2)", name: "Tấn công sĩ quan bằng vũ khí chết người", class: "Felony", fine: "$130,000.00", jail: "60 Tháng", desc: "Tấn công một sĩ quan bảo vệ trật tự bằng vũ khí chết người, bao gồm cả súng ống." },
+                    { id: "PC 245", name: "Tấn công bằng vũ khí chết người", class: "Felony", fine: "$146,000.00", jail: "20 Tháng", desc: "Tấn công người khác bằng bất kỳ loại vũ khí hoặc hung khí chết người nào." },
+                    { id: "BPC 25850", name: "Tàng trữ trái phép vũ khí", class: "Felony", fine: "$190,000.00", jail: "12 Tháng", desc: "Vung vẩy, nổ súng, hoặc sở hữu súng mà không có giấy phép hợp pháp; hoặc sở hữu súng không được đăng ký với Sở Cảnh sát Los Angeles." },
+                    { id: "PC 417", name: "Vung vẩy đe dọa bằng súng hoặc vũ khí", class: "Misdemeanor", fine: "$98,500.00", jail: "6 Tháng", desc: "Hành vi khua khoáng, vung vẩy súng ống với thái độ giận dữ, kích động hoặc nhằm mục đích đe dọa." },
+                    { id: "PC 246.3", name: "Nổ súng bất cẩn", class: "Felony", fine: "$90,000.00", jail: "12 Tháng", desc: "Cố ý nổ súng một cách cực kỳ cẩu thả có thể dẫn đến thương tích hoặc chết người." },
+                    { id: "PC 32625(a)", name: "Tàng trữ/Vận chuyển trái phép súng máy", class: "Felony", fine: "$300,000.00", jail: "24 Tháng", desc: "Sở hữu hoặc vận chuyển bất kỳ loại súng máy tự động nào mà không được pháp luật cho phép." },
+                    { id: "PC 30605", name: "Tàng trữ vũ khí tấn công (Súng trường)", class: "Felony", fine: "$260,000.00", jail: "24 Tháng", desc: "Sở hữu bất kỳ loại vũ khí quân dụng tấn công nào mà không có quyền sở hữu hợp pháp." },
+                    { id: "PC 182-M", name: "Âm mưu giết người", class: "Felony", fine: "$320,000.00", jail: "36 Tháng", desc: "Xúi giục, thuê mướn, chỉ đạo hoặc yêu cầu người khác thực hiện hành vi giết người. Mức án tối đa lên tới 150 tháng." },
+                    { id: "PC 21510", name: "Tàng trữ dao bấm", class: "Misdemeanor", fine: "$87,000.00", jail: "6 Tháng", desc: "Mang theo trên người, trong xe hoặc tài sản dao bấm có lưỡi dài hơn 2 inch. Ngoại lệ cho người đi săn có giấy phép săn bắn hợp lệ." },
+                    { id: "PC 12022b", name: "Trang bị vũ khí khi thực hiện trọng tội", class: "Felony", fine: "$10,500.00", jail: "12 Tháng", desc: "Sử dụng vũ khí nguy hiểm hoặc chết người trong khi thực hiện trọng tội sẽ bị áp dụng hình phạt tù cộng dồn liên tiếp." },
+                    { id: "PC 23920", name: "Tàng trữ súng bị xóa số sê-ri", class: "Felony", fine: "$200,000.00", jail: "6 Tháng", desc: "Cố ý mua, nhận hoặc tàng trữ súng có số sê-ri bị cạo sửa hoặc xóa bỏ. Có thể phạt tù đến 6 tháng trong nhà tù quận và/hoặc phạt tới 1.000 USD." },
+                    { id: "PC 29800", name: "Người có tiền án trọng tội tàng trữ súng", class: "Felony", fine: "$170,000.00", jail: "12 Tháng", desc: "Bất kỳ cá nhân nào từng bị kết án Trọng tội bị phát hiện đang sở hữu súng ống." },
+                    { id: "PC 25850", name: "Mang theo súng đã nạp đạn", class: "Misdemeanor", fine: "$135,500.00", jail: "10 Tháng", desc: "Mang theo súng đã nạp sẵn đạn trên người hoặc trong phương tiện giao thông tại các khu vực công cộng hoặc đường phố thuộc thành phố." }
+                ]
+            },
+            part3: {
+                title: "Phần 3: Xâm Phạm Thuần Phong Mỹ Tục",
+                type: "law",
+                items: [
+                    { id: "PC 647.1", name: "Lảng vảng công cộng mục đích xấu", class: "Infraction", fine: "$66,000.00", jail: "0 Tháng", desc: "Đứng hoặc chờ đợi quanh khu vực lối đi chung nhằm mục đích ăn xin hoặc chèo kéo mại dâm." },
+                    { id: "PC 314", name: "Phô bày thân thể khiếm nhã", class: "Misdemeanor", fine: "$80,500.00", jail: "6 Tháng", desc: "Cố ý phô bày cơ thể hoặc bộ phận sinh dục tại nơi công cộng hoặc trước mặt người khác gây xúc phạm hay khó chịu." },
+                    { id: "PC 330", name: "Cờ bạc bất hợp pháp", class: "Infraction", fine: "$168,000.00", jail: "0 Tháng", desc: "Tổ chức, gạ gẫm hoặc tham gia đánh bạc trái phép tại bất kỳ địa điểm nào, hoặc thiết lập, phát hành các hình thức xổ số không được cấp phép." },
+                    { id: "PC 32", name: "Tòng phạm / Che giấu tội phạm", class: "Misdemeanor", fine: "$100,500.00", jail: "10 Tháng", desc: "Chứa chấp, che giấu hoặc hỗ trợ người đang bị buộc tội hay bị điều tra nhằm giúp họ trốn tránh sự trừng phạt của pháp luật." }
+                ]
+            },
+            part4: {
+                title: "Phần 4: Xâm Phạm Sức Khỏe & An Toàn",
+                type: "law",
+                items: [
+                    { id: "PC 369", name: "Lái xe trên đường ray xe lửa", class: "Misdemeanor", fine: "$170,000.00", jail: "0 Tháng", desc: "Lái xe hoặc điều khiển phương tiện di chuyển trên và dọc theo đường ray xe lửa thuộc quyền lưu thông riêng." },
+                    { id: "PC 372", name: "Gây mất trật tự/Ô nhiễm công cộng", class: "Infraction", fine: "$25,000.00", jail: "0 Tháng", desc: "Hành vi gây hại cho sức khỏe, khiếm nhã, cản trở việc sử dụng tài sản tự do của cộng đồng, hoặc cản trở lưu thông trên sông, hồ, công viên, đường sá." },
+                    { id: "PC 374", name: "Xả rác bừa bãi", class: "Infraction", fine: "$36,500.00", jail: "0 Tháng", desc: "Cố ý hoặc cẩu thả ném, thả, đặt rác thải xuống đất hoặc nguồn nước không đúng nơi quy định." },
+                    { id: "PC 148-E", name: "Cản trở lực lượng cứu hộ khẩn cấp", class: "Misdemeanor", fine: "$87,400.00", jail: "6 Tháng", desc: "Tụ tập hoặc dừng lại tại hiện trường khẩn cấp để hiếu kỳ đứng xem cảnh sát, lính cứu hỏa, y tế làm việc gây cản trở nhiệm vụ." },
+                    { id: "PC 21810", name: "Tàng trữ tay đấm gấu (Brass Knuckles)", class: "Misdemeanor", fine: "$39,500.00", jail: "6 Tháng", desc: "Hành vi sở hữu, sản xuất, mua bán, tặng hoặc nhập khẩu vũ khí tay đấm kim loại là bất hợp pháp." }
+                ]
+            },
+            part5: {
+                title: "Phần 5: Xâm Phạm Trật Tự Công Cộng",
+                type: "law",
+                items: [
+                    { id: "PC 404", name: "Bạo loạn", class: "Felony", fine: "$115,000.00", jail: "24 Tháng", desc: "Sử dụng vũ lực hoặc bạo lực gây rối trật tự công cộng bởi từ 2 người trở lên hành động cùng nhau mà không có thẩm quyền pháp luật." },
+                    { id: "PC 404.6", name: "Kích động bạo loạn", class: "Misdemeanor", fine: "$133,000.00", jail: "0 Tháng", desc: "Hành vi cố ý thúc giục, kích động người khác tham gia bạo loạn, sử dụng bạo lực hoặc đốt phá tài sản." },
+                    { id: "PC 408", name: "Tụ tập trái pháp luật", class: "Misdemeanor", fine: "$80,000.00", jail: "6 Tháng", desc: "Khi hai hoặc nhiều người tụ tập cùng nhau để thực hiện một hành vi phi pháp, hoặc làm một việc hợp pháp nhưng bằng thái độ bạo lực, ầm ĩ." },
+                    { id: "PC 415", name: "Đánh nhau công cộng", class: "Misdemeanor", fine: "$67,000.00", jail: "6 Tháng", desc: "Tham gia, xúi giục hoặc cổ vũ các cuộc đánh nhau tổ chức trái phép. Khán giả đứng xem cũng có thể bị phạt tới 1.000 USD." },
+                    { id: "PC 415.5", name: "Gây rối trật tự", class: "Infraction", fine: "$67,000.00", jail: "0 Tháng", desc: "Gây mất trật tự hoặc sự bình yên chung bằng cách thực hiện các hành động nguy hiểm hoặc quấy rầy tại nơi công cộng." },
+                    { id: "PC 422", name: "Đe dọa phạm tội nghiêm trọng", class: "Misdemeanor", fine: "$96,500.00", jail: "6 Tháng", desc: "Đe dọa tước đoạt mạng sống hoặc gây thương tích nghiêm trọng cho người khác qua lời nói, văn bản hoặc thiết bị điện tử, ngay cả khi không có ý định thực hiện thực tế." },
+                    { id: "PC 422.55", name: "Tội phạm thù ghét", class: "Felony", fine: "$50,000.00", jail: "36 Tháng", desc: "Tội phạm nhắm vào cá nhân hoặc tài sản xuất phát từ định kiến của hung thủ đối với chủng tộc, tôn giáo, khuyết tật, xu hướng tính dục hoặc giới tính." },
+                    { id: "PC 647", name: "Cư xử mất chuẩn mực công cộng", class: "Misdemeanor", fine: "$26,300.00", jail: "6 Tháng", desc: "Hành vi cố ý gây phiền hà, náo động, hoang mang công cộng hoặc tạo ra nguy cơ mất trật tự công cộng." }
+                ]
+            },
+            part6: {
+                title: "Phần 6: Các Tội Xâm Phạm Tài Sản",
+                type: "law",
+                items: [
+                    { id: "PC 451", name: "Phóng hỏa", class: "Felony", fine: "$186,000.00", jail: "35 Tháng", desc: "Cố ý và ác ý châm lửa đốt hoặc gây ra vụ cháy cho bất kỳ công trình, đất rừng hoặc tài sản nào." },
+                    { id: "PC 453", name: "Tàng trữ vật liệu phóng hỏa", class: "Felony", fine: "$115,000.00", jail: "10 Tháng", desc: "Sở hữu, sản xuất vật liệu dễ cháy hoặc thiết bị gây cháy nhằm mục đích thực hiện hành vi phóng hỏa." },
+                    { id: "PC 459", name: "Đột nhập trộm cắp (Burglary)", class: "Felony", fine: "$89,000.00", jail: "24 Tháng", desc: "Xâm nhập trái phép vào bất kỳ tài sản nào không thuộc sở hữu hoặc không có sự cho phép với ý định thực hiện trộm cắp." },
+                    { id: "PC 602.5-V", name: "Xâm nhập trái phép phương tiện", class: "Misdemeanor", fine: "$80,500.00", jail: "0 Tháng", desc: "Cưỡng chế mở/đột nhập vào xe cơ giới với ý định thực hiện hành vi trộm cắp." },
+                    { id: "PC 464", name: "Phá két sắt / Container bảo mật", class: "Felony", fine: "$200,500.00", jail: "24 Tháng", desc: "Đột nhập công trình và sử dụng đèn khò, hồ quang điện, ống nhiệt hoặc chất nổ để phá két sắt, hầm ngầm hoặc nơi bảo mật." },
+                    { id: "PC 466", name: "Tàng trữ công cụ đột nhập trộm cắp", class: "Misdemeanor", fine: "$85,000.00", jail: "0 Tháng", desc: "Mang theo đồ nghề mở khóa, xà beng, kìm kẹp, chìa khóa vạn năng... với ý định đột nhập tòa nhà, xe cộ, máy bay." },
+                    { id: "PC 466.5", name: "Tàng trữ chìa khóa vạn năng xe cơ giới", class: "Misdemeanor", fine: "$100,000.00", jail: "6 Tháng", desc: "Sở hữu chìa khóa vạn năng xe cơ giới hoặc chìa mở khóa bánh xe nhằm mục đích thực hiện hành vi phạm pháp." },
+                    { id: "PC 475", name: "Làm giả tiền tệ", class: "Felony", fine: "$200,000.00", jail: "30 Tháng", desc: "Tạo ra, mua bán, chào mời hoặc tàng trữ tiền giả." },
+                    { id: "PC 484a", name: "Trộm cắp vặt", class: "Misdemeanor", fine: "$73,000.00", jail: "6 Tháng", desc: "Hành vi trộm cắp, chiếm đoạt tài sản, tiền bạc hoặc hàng hóa có tổng giá trị không vượt quá 950 USD." },
+                    { id: "PC 487", name: "Trộm cắp tài sản giá trị lớn", class: "Felony", fine: "$111,000.00", jail: "12 Tháng", desc: "Hành vi trộm cắp, chiếm đoạt tài sản, tiền bạc hoặc hàng hóa có tổng giá trị vượt trên 950 USD." },
+                    { id: "PC 487d(2)", name: "Trộm cắp súng ống", class: "Felony", fine: "$128,000.00", jail: "24 Tháng", desc: "Hành vi trộm cắp hoặc chiếm đoạt súng ống có giá trị vượt quá 950 USD." },
+                    { id: "PC 496.5", name: "Tiêu thụ/Trộm cắp phụ tùng xe", class: "Misdemeanor", fine: "$89,000.00", jail: "12 Tháng", desc: "Tàng trữ trái phép tài sản có được từ hành vi trộm cắp trong xe cộ, cậy khóa xe hoặc tháo dỡ phụ tùng xe." },
+                    { id: "PC 499", name: "Trộm cắp máy bay", class: "Felony", fine: "$360,000.00", jail: "12 Tháng", desc: "Vận hành hoặc chiếm đoạt máy bay không thuộc sở hữu của mình mà không được phép nhằm tước đoạt quyền sở hữu tạm thời hay vĩnh viễn." },
+                    { id: "PC 518", name: "Tống tiền", class: "Felony", fine: "$400,000.00", jail: "6 Tháng", desc: "Dùng vũ lực hoặc đe dọa ép buộc người khác phải giao tài sản hoặc ép buộc công chức thực hiện hành vi công vụ." },
+                    { id: "PC 529", name: "Mạo danh người khác", class: "Felony", fine: "$89,000.00", jail: "12 Tháng", desc: "Mạo danh người khác một cách gian dối hoặc tàng trữ giấy tờ tùy thân của người khác." },
+                    { id: "PC 537", name: "Tàng trữ hàng hóa bị xóa mã nhận dạng", class: "Infraction", fine: "$75,000.00", jail: "0 Tháng", desc: "Cố ý mua bán, tàng trữ hoặc che giấu tài sản bị xóa bỏ, cạo sửa số sê-ri hoặc mã nhận dạng của nhà sản xuất." },
+                    { id: "PC 538", name: "Mạo danh quan chức công", class: "Felony", fine: "$84,600.00", jail: "48 Tháng", desc: "Cố ý mặc đồng phục, đeo huy hiệu hoặc sử dụng thẻ công chức nhằm mục đích lừa đảo mạo danh quan chức nhà nước." },
+                    { id: "PC 550", name: "Trục lợi bảo hiểm", class: "Felony", fine: "$146,450.00", jail: "16 Tháng", desc: "Cố ý phá hủy, giấu giếm hoặc vứt bỏ tài sản đang được mua bảo hiểm nhằm lừa đảo tiền bồi thường." },
+                    { id: "PC 602", name: "Xâm phạm gia cư/Tài sản tư nhân", class: "Misdemeanor", fine: "$10,000.00", jail: "6 Tháng", desc: "Xâm nhập hoặc cố tình lưu lại trên tài sản riêng đã có biển báo cấm mà không có sự cho phép bằng văn bản của chủ sở hữu." },
+                    { id: "PC 594.1", name: "Phá hoại đường sá, biển báo giao thông", class: "Misdemeanor", fine: "$88,680.00", jail: "0 Tháng", desc: "Ác ý phá hủy, tháo dỡ, làm hư hỏng hoặc cản trở đường sá, vỉa hè, cầu cống hoặc biển báo giao thông." },
+                    { id: "PC 3004", name: "Gian lận danh tính cá nhân", class: "Misdemeanor", fine: "$97,500.00", jail: "10 Tháng", desc: "Thu thập hoặc tàng trữ thông tin nhận dạng cá nhân (ID) của người khác nhằm mục đích lừa đảo." },
+                    { id: "PC 3005", name: "Chiếm giữ tài sản chính phủ", class: "Felony", fine: "$107,000.00", jail: "20 Tháng", desc: "Tàng trữ hoặc chiếm giữ trái phép trang thiết bị do chính phủ cấp phát." },
+                    { id: "PC 148.5", name: "Báo án giả", class: "Infraction", fine: "$60,000.00", jail: "0 Tháng", desc: "Hành vi trình báo một tội phạm hoặc vụ án không hề xảy ra." },
+                    { id: "PC 487d(1)", name: "Trộm cắp ô tô (GTA)", class: "Felony", fine: "$93,000.00", jail: "12 Tháng", desc: "Chiếm đoạt xe ô tô trái pháp luật nhằm tước đoạt quyền sở hữu của chủ xe." },
+                    { id: "PC 459.5", name: "Trộm cắp trong cửa hàng", class: "Misdemeanor", fine: "$103,500.00", jail: "2 Tháng", desc: "Vào cửa hàng kinh doanh trong giờ mở cửa với ý định trộm cắp hàng hóa trị giá dưới 950 USD." },
+                    { id: "PC 602.5", name: "Đột nhập nhà ở", class: "Felony", fine: "$179,500.00", jail: "25 Tháng", desc: "Hành vi đột nhập vào nhà dân, nơi cư trú hoặc bất kỳ địa điểm nào được sử dụng làm nhà ở." }
+                ]
+            },
+            part7: {
+                title: "Phần 7: Phá Hoại Ác Ý",
+                type: "law",
+                items: [
+                    { id: "PC 594", name: "Phá hoại tài sản (Vandalism)", class: "Infraction", fine: "$69,000.00", jail: "0 Tháng", desc: "Ác ý bôi bẩn, phá hủy hoặc làm hư hỏng tài sản động sản hay bất động sản của người khác." },
+                    { id: "PC 597", name: "Ngược đãi động vật", class: "Felony", fine: "$80,000.00", jail: "12 Tháng", desc: "Gây nguy hiểm cho động vật do nhốt trong nhiệt độ khắc nghiệt, thiếu thông khí, thức ăn nước uống, hoặc tra tấn, hành hạ động vật." },
+                    { id: "PC 594-S", name: "Phá hoại tài sản nghiêm trọng", class: "Misdemeanor", fine: "$93,000.00", jail: "6 Tháng", desc: "Cố ý làm hư hỏng, phá hủy hoặc bôi bẩn tài sản hữu hình của người khác mà không được sự đồng ý." },
+                    { id: "PC 602.1", name: "Cản trở hoạt động kinh doanh", class: "Infraction", fine: "$81,600.00", jail: "0 Tháng", desc: "Cố tình cản trở kinh doanh hợp pháp bằng cách quấy rối, đe dọa khách hàng và từ chối rời đi khi được chủ cửa hàng hoặc cảnh sát yêu cầu." },
+                    { id: "PC 640", name: "Phá hoại phương tiện giao thông công cộng", class: "Felony", fine: "$80,500.00", jail: "10 Tháng", desc: "Cố ý tháo dỡ, phá hoại phương tiện chở khách công cộng, đường ray, cầu dao nhằm mục đích gây thương tích nghiêm trọng cho hành khách." }
+                ]
+            },
+            part8: {
+                title: "Phần 8: Các Tội Phạm Khác",
+                type: "law",
+                items: [
+                    { id: "PC 26500", name: "Mua bán súng không phép", class: "Felony", fine: "$160,000.00", jail: "24 Tháng", desc: "Bán, cho thuê hoặc chuyển nhượng súng mà không có giấy phép kinh doanh hợp lệ. Phạt tới 250 tháng tù và 50.000 USD." },
+                    { id: "PC 30305", name: "Tàng trữ/Phân phối đạn dược trái phép", class: "Felony", fine: "$158,000.00", jail: "6 Tháng", desc: "Người có tiền án trọng tội mà tàng trữ, mua bán hoặc chuyển nhượng đạn dược." },
+                    { id: "PC 632", name: "Xâm phạm quyền riêng tư", class: "Infraction", fine: "$83,000.00", jail: "0 Tháng", desc: "Xâm nhập trái phép vào không gian, đời tư hoặc thông tin cá nhân của người khác mà không được sự đồng ý." },
+                    { id: "PC 646.9", name: "Quấy rối theo dõi (Stalking)", class: "Misdemeanor", fine: "$49,000.00", jail: "6 Tháng", desc: "Cố ý theo dõi lặp đi lặp lại hoặc ác ý quấy rối người khác kèm theo đe dọa thực tế khiến họ sợ hãi cho an toàn bản thân hoặc gia đình." },
+                    { id: "PC 647.9", name: "Chụp ảnh thi thể trái phép", class: "Misdemeanor", fine: "$49,000.00", jail: "6 Tháng", desc: "Công chức hoặc cá nhân tại hiện trường tai nạn/vụ án chụp ảnh người đã khuất vì mục đích cá nhân, không phục vụ điều tra chính thức." },
+                    { id: "PC 653f", name: "Xúi giục phạm tội", class: "Felony", fine: "$70,350.00", jail: "0 Tháng", desc: "Kêu gọi, xúi giục người khác thực hiện các tội nghiêm trọng như hối lộ, trộm cướp, bắt cóc, phóng hỏa hoặc khai man." },
+                    { id: "PC 653.2", name: "Quấy rối mạng / Phát tán thông tin cá nhân (Doxxing)", class: "Misdemeanor", fine: "$63,000.00", jail: "6 Tháng", desc: "Sử dụng thiết bị điện tử cố ý gây sợ hãi cho an toàn của người khác, bao gồm phát tán thông tin cá nhân, hình ảnh riêng tư mà không được phép." }
+                ]
+            },
+            part9: {
+                title: "Phần 9: Các Chất Cấm (Ma Túy)",
+                type: "law",
+                items: [
+                    { id: "PC 11357", name: "Tàng trữ cần sa", class: "Infraction", fine: "$107,500.00", jail: "0 Tháng", desc: "Tàng trữ số lượng vượt quá 28,5 gram cần sa." },
+                    { id: "PC 11379.6", name: "Điều chế / Sản xuất cần sa", class: "Felony", fine: "$102,450.00", jail: "15 Tháng", desc: "Sản xuất, điều chế hoặc tổng hợp hóa học bất kỳ hình thức nào của cần sa mà không có quyền hợp pháp." },
+                    { id: "PC 11358", name: "Trồng cây cần sa", class: "Misdemeanor", fine: "$102,363.00", jail: "10 Tháng", desc: "Trồng trọt, chăm sóc, thu hoạch, phơi khô hoặc chế biến cây cần sa trái phép." },
+                    { id: "PC 11359", name: "Tàng trữ cần sa mục đích phân phối", class: "Misdemeanor", fine: "$100,000.00", jail: "6 Tháng", desc: "Tàng trữ cần sa với ý định chủ quan nhằm mục đích mua bán." },
+                    { id: "PC 11350", name: "Tàng trữ chất cấm", class: "Felony", fine: "$140,000.00", jail: "12 Tháng", desc: "Tàng trữ các loại ma túy/chất kiểm soát mà không có chỉ định y tế hoặc quyền hợp pháp." },
+                    { id: "PC 11351", name: "Sản xuất ma túy / Chất cấm", class: "Felony", fine: "$140,000.00", jail: "22 Tháng", desc: "Điều chế, sản xuất, phân phối hoặc tổng hợp hóa học các chất cấm trái phép." },
+                    { id: "PC 11352", name: "Tàng trữ chất cấm mục đích phân phối", class: "Felony", fine: "$200,750.00", jail: "12 Tháng", desc: "Tàng trữ các loại ma túy/chất cấm với ý định tiêu thụ, mua bán." },
+                    { id: "HS 11352", name: "Buôn lậu ma túy", class: "Felony", fine: "$193,500.00", jail: "15 Tháng", desc: "Nhập khẩu, vận chuyển buôn bán, cung cấp hoặc chào mời vận chuyển ma túy vào địa phận tiểu bang." }
+                ]
+            },
+            part10: {
+                title: "Phần 10: Luật Săn Bắn & Thủy Sản",
+                type: "law",
+                items: [
+                    { id: "FGC 2000", name: "Săn trộm", class: "Felony", fine: "$103,000.00", jail: "35 Tháng", desc: "Săn bắt chim, thú, cá, bò sát trái quy định. Tàng trữ động vật hoang dã tại rừng, sông hồ khi mang theo dụng cụ săn bắn là bằng chứng sơ bộ của hành vi săn trộm." },
+                    { id: "FGC 3031", name: "Săn bắn không có giấy phép", class: "Misdemeanor", fine: "$100,000.00", jail: "10 Tháng", desc: "Thực hiện hoạt động săn bắn mà không có giấy phép hợp lệ." },
+                    { id: "PC 25850(a)", name: "Chở súng trường/Súng săn nạp sẵn đạn trên xe", class: "Misdemeanor", fine: "$86,000.00", jail: "10 Tháng", desc: "Mang theo súng nạp sẵn đạn trong phương tiện di chuyển tại nơi công cộng hoặc đường phố." },
+                    { id: "FGC 3004(b)", name: "Nổ súng từ đường giao thông", class: "Felony", fine: "$140,000.00", jail: "12 Tháng", desc: "Nổ súng nhắm vào động vật qua hoặc dọc theo đường giao thông công cộng một cách nguy hiểm." },
+                    { id: "FCG 3004(a)", name: "Săn bắn gần khu dân cư", class: "Felony", fine: "$163,000.00", jail: "10 Tháng", desc: "Săn bắn hoặc nổ súng/bắn cung nỏ trong phạm vi 150 yard (450 feet) quanh nhà ở có người cư trú (trừ khi là chủ sở hữu đất)." },
+                    { id: "FGC 3003.5", name: "Dùng xe truy đuổi động vật hoang dã", class: "Felony", fine: "$83,000.00", jail: "30 Tháng", desc: "Sử dụng các phương tiện cơ giới đường bộ, đường thủy hoặc hàng không để xua đuổi, truy đuổi chim hoặc thú hoang dã." }
+                ]
+            },
+            part11: {
+                title: "Phần 11: Đưa Hàng Cấm Vào Trại Giam",
+                type: "law",
+                items: [
+                    { id: "PC 4573.5", name: "Đưa hàng cấm (Ma túy/Rượu) vào trại giam", class: "Felony", fine: "$170,000.00", jail: "10 Tháng", desc: "Cố ý mang rượu hoặc các loại thuốc không được phép vào nhà tù hoặc trại giam." },
+                    { id: "PC 4573", name: "Đưa chất cấm vào trại giam", class: "Felony", fine: "$217,000.00", jail: "15 Tháng", desc: "Mang các loại ma túy bất hợp pháp vào cơ sở cải tạo/giam giữ." },
+                    { id: "PC 4573.6", name: "Tàng trữ hàng cấm trong cơ sở giam giữ", class: "Felony", fine: "$170,000.00", jail: "15 Tháng", desc: "Cố ý tàng trữ các vật phẩm cấm bên trong khuôn viên trại giam." },
+                    { id: "PC 4574", name: "Đưa vũ khí/Điện thoại vào trại giam", class: "Felony", fine: "$200,000.00", jail: "50 Tháng", desc: "Mang súng ống, vũ khí chết người hoặc chất nổ vào cơ sở giam giữ." }
+                ]
+            },
+            part12: {
+                title: "Phần 12: Bộ Luật Đô Thị",
+                type: "law",
+                items: [
+                    { id: "LAMC SEC 56.12", name: "Cản trở đường phố hoặc vỉa hè", class: "Infraction", fine: "$21,000.00", jail: "0 Tháng", desc: "Đặt hoặc để lại các vật dụng gây cản trở vỉa hè, đường phố, hẻm công cộng mà không có giấy phép (KHÔNG ĐƯỢC BẮT GIỮ CHỈ VÌ LỖI NÀY)." }
+                ]
+            },
+            vehicle: {
+                title: "Luật Giao Thông Đường Bộ / Phương Tiện",
+                type: "law",
+                items: [
+                    { id: "CVC 14601.1", name: "Lái xe khi bị treo hoặc thu hồi bằng", class: "Misdemeanor", fine: "$60,000.00", jail: "12 Tháng", desc: "Không được điều khiển phương tiện cơ giới trong thời gian giấy phép lái xe bị đình chỉ hoặc thu hồi." },
+                    { id: "PC 5200", name: "Không gắn biển số xe", class: "Infraction", fine: "$25,000.00", jail: "0 Tháng", desc: "Điều khiển phương tiện không gắn biển số ở vị trí quy định một cách rõ ràng, dễ quan sát." },
+                    { id: "CVC 21461", name: "Không chấp hành hiệu lệnh", class: "Misdemeanor", fine: "$60,000.00", jail: "4 Tháng", desc: "Hành vi trái pháp luật khi cố ý không chấp hành hoặc từ chối tuân thủ hiệu lệnh, tín hiệu hoặc sự chỉ dẫn hợp pháp của sĩ quan cảnh sát hoặc lực lượng phòng cháy chữa cháy." },
+                    { id: "CVC 2800.1", name: "Trốn chạy cảnh sát", class: "Felony", fine: "$83,000.00", jail: "6 Tháng", desc: "Người điều khiển xe cơ giới cố ý phóng xe bỏ chạy hoặc tìm cách lẩn trốn xe cảnh sát đang truy đuổi." },
+                    { id: "CVC 2800.2", name: "Trốn chạy cảnh sát liều lĩnh", class: "Felony", fine: "$100,450.00", jail: "15 Tháng", desc: "Bỏ chạy hoặc tìm cách lẩn trốn sự truy đuổi của cảnh sát bằng cách điều khiển phương tiện bất chấp an toàn tính mạng con người hoặc tài sản." },
+                    { id: "CVC 2800.3", name: "Bỏ chạy gây thương tích", class: "Felony", fine: "$86,000.00", jail: "24 Tháng", desc: "Cố gắng lẩn trốn sự truy đuổi của cảnh sát và gây ra thương tích nghiêm trọng cho người khác." },
+                    { id: "CVC 2818", name: "Đặt biển báo/Cọc tiêu giao thông trái phép", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Đi qua hoặc tự ý di chuyển các hệ thống đèn báo hiệu, cọc tiêu, pháo sáng phân luồng giao thông của lực lượng chức năng tại hiện trường khẩn cấp." },
+                    { id: "CVC 4463", name: "Lái xe không đăng ký/Bảo hiểm", class: "Infraction", fine: "$70,000.00", jail: "0 Tháng", desc: "Không được lái, di chuyển hoặc đỗ phương tiện cơ giới trên đường bộ hoặc bãi xe công cộng nếu phương tiện chưa được đăng ký và mua bảo hiểm." },
+                    { id: "CVC 10852", name: "Cậy phá/Tháo dỡ phương tiện trái phép", class: "Misdemeanor", fine: "$86,000.00", jail: "6 Tháng", desc: "Cá nhân hoặc nhóm cố ý cậy phá, tháo dỡ phụ tùng hoặc xâm phạm các vật dụng bên trong xe của người khác khi chưa được chủ xe đồng ý." },
+                    { id: "CVC 22658", name: "Cản trở xe cứu hộ/xe cẩu xe", class: "Infraction", fine: "$80,000.00", jail: "0 Tháng", desc: "Không được cản trở nhân viên cứu hộ/thu hồi tài sản đưa xe vi phạm về bãi tạm giữ hoặc đại lý." },
+                    { id: "CVC 12500", name: "Lái xe không có bằng lái hợp lệ", class: "Infraction", fine: "$63,500.00", jail: "0 Tháng", desc: "Không được điều khiển xe cơ giới trên đường bộ nếu không có giấy phép lái xe hợp lệ." },
+                    { id: "CVC 12511", name: "Tàng trữ nhiều bằng lái xe", class: "Infraction", fine: "$55,000.00", jail: "0 Tháng", desc: "Không cá nhân nào được tàng trữ hoặc sở hữu cùng lúc nhiều hơn một bằng lái xe do Nhà nước cấp." },
+                    { id: "CVC 12951(b)", name: "Không xuất trình bằng lái xe", class: "Misdemeanor", fine: "$36,000.00", jail: "4 Tháng", desc: "Người lái xe phải xuất trình giấy phép lái xe khi có yêu cầu của quan tòa hoặc cảnh sát." },
+                    { id: "CVC 20002", name: "Bỏ chạy khỏi hiện trường tai nạn", class: "Misdemeanor", fine: "$80,000.00", jail: "6 Tháng", desc: "Rời khỏi hiện trường vụ tai nạn giao thông mà bản thân gây ra hư hỏng tài sản hoặc thương tích cho người khác." },
+                    { id: "CVC 21802", name: "Không nhường đường", class: "Infraction", fine: "$25,000.00", jail: "0 Tháng", desc: "Không nhường đường theo tín hiệu giao thông, biển báo, vạch kẻ đường hoặc không nhường đường cho xe ưu tiên, cho người đi bộ." },
+                    { id: "CVC 22350", name: "Chạy quá tốc độ quy định", class: "Infraction", fine: "$36,000.00", jail: "0 Tháng", desc: "Điều khiển phương tiện vượt quá tốc độ tối đa cho phép ghi trên biển báo đường bộ." },
+                    { id: "CVC 22350-H", name: "Chạy quá tốc độ nghiêm trọng (>110 MPH)", class: "Misdemeanor", fine: "$55,450.00", jail: "6 Tháng", desc: "Lái xe với tốc độ từ 110 dặm/giờ (177 km/h) trở lên trên các tuyến đường bộ công cộng hoặc cao tốc." },
+                    { id: "CVC 22400", name: "Chạy xe quá chậm gây cản trở", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Lái xe dưới tốc độ quy định của tuyến đường gây cản trở, ách tắc dòng lưu thông." },
+                    { id: "CVC 21460", name: "Đè vạch / Sai làn đường", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Không tuân thủ các vạch kẻ đường, làn đường hoặc chỉ dẫn sơn trên mặt đường." },
+                    { id: "CVC 26708", name: "Lái xe bị che khuất tầm nhìn / Che mặt", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Lái xe trong tình trạng tầm nhìn bị hạn chế, bao gồm việc đeo mặt nạ, kính che hoặc trùm kín mặt làm cản trở quan sát." },
+                    { id: "CVC 21703", name: "Bám đuôi quá sát xe phía trước", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Lái xe bám quá sát phương tiện phía trước. Người lái phải duy trì khoảng cách an toàn bằng 1 đến 2 chiều dài thân xe." },
+                    { id: "CVC 2500", name: "Sử dụng xe bọc thép không phép", class: "Infraction", fine: "$87,000.00", jail: "0 Tháng", desc: "Vận hành xe bọc thép (xe chở tiền/xe quân sự) mà không có sự cấp phép." },
+                    { id: "CVC 22400-B", name: "Cản trở giao thông", class: "Infraction", fine: "$36,000.00", jail: "0 Tháng", desc: "Dừng, đỗ hoặc bỏ lại xe cộ trên lòng đường hay vỉa hè gây cản trở lưu thông công cộng." },
+                    { id: "CVC 21809", name: "Không nhường làn cho xe ưu tiên", class: "Infraction", fine: "$60,000.00", jail: "0 Tháng", desc: "Không chuyển làn đường và giảm tốc độ khi gặp phương tiện khẩn cấp đang phát tín hiệu." },
+                    { id: "CVC 21955", name: "Sang đường bừa bãi gây mất an toàn", class: "Infraction", fine: "$15,450.00", jail: "0 Tháng", desc: "Đi bộ sang đường ngoài vạch kẻ cho phép hoặc phớt lờ đèn tín hiệu. Chỉ xử phạt nếu có phương tiện đang lưu thông vào thời điểm vi phạm." },
+                    { id: "CVC 23103", name: "Lái xe liều lĩnh", class: "Misdemeanor", fine: "$27,000.00", jail: "6 Tháng", desc: "Lái xe bất chấp an toàn của người và tài sản. Nếu gây thương tích nặng hoặc chết người, có thể nâng lên Trọng tội (phạt $2,500 và 12 tháng tù)." },
+                    { id: "CVC 22651", name: "Đỗ xe trái phép", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Đỗ xe tại nơi cấm đỗ, đỗ trong làn đường khẩn cấp/chữa cháy, hoặc đỗ chắn trụ nước cứu hỏa." },
+                    { id: "CVC 22953", name: "Tự ý di chuyển xe trái phép", class: "Infraction", fine: "$29,000.00", jail: "0 Tháng", desc: "Tự ý cẩu kéo hoặc di chuyển phương tiện ra khỏi bãi đỗ, gara hay lòng đường trái quy định." },
+                    { id: "CVC 23109", name: "Đua xe trái phép", class: "Misdemeanor", fine: "$83,450.00", jail: "6 Tháng", desc: "Tham gia đua xe tốc độ trên đường phố, cao tốc hoặc bãi xe. Áp dụng bổ sung hình phạt tạm giữ phương tiện và treo bằng lái tới 1 tuần." },
+                    { id: "CVC 23116", name: "Chở người ở thùng xe tải", class: "Infraction", fine: "$32,000.00", jail: "0 Tháng", desc: "Người điều khiển xe bán tải hoặc xe tải sàn phẳng không được chở người phía sau thùng xe trên đường giao thông." },
+                    { id: "CVC 23123", name: "Sử dụng điện thoại khi lái xe", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Cầm và sử dụng điện thoại khi đang lái xe, trừ trường hợp dùng thiết bị kết nối rảnh tay điều khiển bằng giọng nói." },
+                    { id: "CVC 24002", name: "Phương tiện không đủ điều kiện an toàn", class: "Infraction", fine: "$23,500.00", jail: "0 Tháng", desc: "Lái xe không gắn biển số, thiếu đèn pha, đèn hậu, đèn phanh hoặc đèn xi-nhan. Lái xe hư hỏng nặng hoặc rơi rụng các bộ phận khung vỏ." },
+                    { id: "BPC 25662", name: "Người dưới tuổi quy định có cồn trong máu", class: "Infraction", fine: "$36,450.00", jail: "0 Tháng", desc: "Người dưới 21 tuổi điều khiển phương tiện có nồng độ cồn từ 0,01% trở lên hoặc tàng trữ đồ uống có cồn." },
+                    { id: "CVC 23152-A", name: "Lái xe trong tình trạng say xỉn (DWI)", class: "Misdemeanor", fine: "$90,000.00", jail: "12 Tháng", desc: "Điều khiển phương tiện cơ giới trong tình trạng chịu ảnh hưởng của bia rượu." },
+                    { id: "CVC 23152-B", name: "Lái xe dưới ảnh hưởng của chất kích thích (DUI)", class: "Misdemeanor", fine: "$80,000.00", jail: "12 Tháng", desc: "Điều khiển phương tiện cơ giới dưới sự ảnh hưởng của ma túy hoặc các loại chất kích thích." },
+                    { id: "CVC 23222(a)", name: "Để đồ uống có cồn đã mở nắp trên xe", class: "Infraction", fine: "$13,000.00", jail: "0 Tháng", desc: "Để chai/lon bia rượu đã mở nắp hoặc dụng cụ sử dụng ma túy trong khoang xe khi đang lái xe." },
+                    { id: "CVC 24250", name: "Lái xe không bật đèn pha khi trời tối", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Không bật đèn chiếu sáng khi trời tối (30 phút sau hoàng hôn đến 30 phút trước bình minh) hoặc khi thời tiết hạn chế tầm nhìn." },
+                    { id: "CVC 25250", name: "Độ chế đèn xe trái phép", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Sử dụng đèn nháy hoặc đèn gầm neon giống màu xe ưu tiên (Đỏ, Xanh, Trắng, Vàng). Đèn pha cấm dùng màu sắc màu mè, phải là đèn chuẩn halogen hoặc xenon." },
+                    { id: "CVC 26708-T", name: "Dán phim cách nhiệt quá đậm màu / Che kính lái", class: "Infraction", fine: "$20,000.00", jail: "0 Tháng", desc: "Dán decal, sơn hoặc chắn vật dụng lên kính lái. Phim cách nhiệt kính trước phải đảm bảo độ truyền sáng tối thiểu 70%." },
+                    { id: "CVC 27315", name: "Lái xe không thắt dây an toàn", class: "Infraction", fine: "$10,000.00", jail: "0 Tháng", desc: "Lái xe hoặc để hành khách ngồi trên xe không thắt dây an toàn. Tất cả người trên xe đều phải thắt dây." },
+                    { id: "CVC 27001", name: "Sử dụng còi xe trái phép / Còi quá to", class: "Infraction", fine: "$10,000.00", jail: "0 Tháng", desc: "Lái xe không có còi, hoặc lắp đặt còi xe phát ra âm thanh quá lớn, chói tai trái quy định." },
+                    { id: "CVC 27465(b)", name: "Sử dụng lốp xe trái quy định (Lốp đua)", class: "Infraction", fine: "$12,500.00", jail: "0 Tháng", desc: "Sử dụng các dòng lốp chuyên dụng cho xe đua (lốp trơn) trên đường giao thông công cộng." },
+                    { id: "CVC 21712", name: "Chở người sai quy định.", class: "Infraction", fine: "$10,000.00", jail: "0 Tháng", desc: "Chở người trên mô tô không ngồi trên yên cố định. Người điều khiển và hành khách xe máy đều phải đội mũ bảo hiểm." },
+                    { id: "CVC 27602", name: "Lắp đặt thiết bị phá sóng radar", class: "Infraction", fine: "$19,500.00", jail: "0 Tháng", desc: "Lắp đặt trên xe các thiết bị phá sóng, gây nhiễu hoặc vô hiệu hóa máy đo tốc độ radar/laser của cảnh sát." },
+                    { id: "CVC 22651-T", name: "Kéo xe trái phép / Kéo xe không an toàn", class: "Infraction", fine: "$26,000.00", jail: "0 Tháng", desc: "Kéo phương tiện khác khi không có giấy phép cứu hộ, hoặc chằng buộc phương tiện được kéo không chắc chắn, mất an toàn." },
+                    { id: "CVC 1.57", name: "Sử dụng xe tự lái sai quy định", class: "Infraction", fine: "$15,000.00", jail: "0 Tháng", desc: "Vận hành phương tiện tự lái (tự động) không có chức năng chuyển sang điều khiển thủ công khi khẩn cấp." },
+                    { id: "CVC 40508", name: "Không hầu tòa", class: "Misdemeanor", fine: "$78,000.00", jail: "12 Tháng", desc: "Không có mặt tại phiên tòa xét xử theo giấy triệu tập." },
+                    { id: "CVC 40508(a)", name: "Từ chối ký cam kết hầu tòa", class: "Misdemeanor", fine: "$63,000.00", jail: "12 Tháng", desc: "Từ chối ký vào biên bản cam kết sẽ có mặt tại phiên tòa." },
+                    { id: "CVC 38300", name: "Không chấp hành biển báo/đèn tín hiệu", class: "Infraction", fine: "$13,450.00", jail: "0 Tháng", desc: "Không tuân thủ các chỉ dẫn của biển báo, vạch kẻ hoặc đèn tín hiệu giao thông." },
+                    { id: "CVC 16029", name: "Lái xe không có bảo hiểm trách nhiệm", class: "Infraction", fine: "$12,000.00", jail: "0 Tháng", desc: "Điều khiển phương tiện cơ giới mà không có giấy chứng nhận bảo hiểm trách nhiệm dân sự hợp lệ." },
+                    { id: "CVC 26708-W", name: "Dán phim cách nhiệt quá đậm màu", class: "Infraction", fine: "$18,300.00", jail: "0 Tháng", desc: "Dán kính đen cách nhiệt vượt quá tiêu chuẩn độ tối cho phép của luật pháp California." },
+                    { id: "CVC 20", name: "Khai man với sĩ quan tuần tra", class: "Misdemeanor", fine: "$17,270.00", jail: "6 Tháng", desc: "Cố ý cung cấp thông tin sai lệch, dùng tên giả hoặc che giấu sự thật khi làm việc với Cảnh sát Tuần tra Cao tốc California." },
+                    { id: "CVC 10851(a)", name: "Trộm cắp / Lái xe của người khác trái phép", class: "Felony", fine: "$57,000.00", jail: "20 Tháng", desc: "Tự ý lấy hoặc điều khiển xe cơ giới của người khác mà không được sự đồng ý của họ." }
+                ]
+            },
+            narcotics: {
+                title: "Phụ Lục: Phân Loại Chất Cấm (Ma Túy)",
+                type: "prelude",
+                items: [
+                    { term: "Nhóm I (Kiểm soát nghiêm ngặt nhất, Không ứng dụng y tế)", def: "Heroin, LSD, MDMA (Thuốc lắc), Psilocybin (Nấm ảo giác), Peyote, GHB (Thuốc mê), Cần sa tổng hợp (Cỏ Mỹ), Muối tắm." },
+                    { term: "Nhóm II (Nguy cơ lạm dụng cao, Y tế hạn chế)", def: "Cocaine, Methamphetamine (Ma túy đá), Oxycodone, Fentanyl, Morphine, Adderall & Ritalin (Khi không có đơn thuốc bác sĩ)." },
+                    { term: "Nhóm III (Nguy cơ lệ thuộc trung bình đến thấp)", def: "Ketamine (Ke), Steroid tăng cơ (Testosterone, Trenbolone), Một số loại dược phẩm chứa Codeine (Khi không có đơn thuốc)." },
+                    { term: "Nhóm IV (Nguy cơ thấp nhưng vẫn kiểm soát)", def: "Xanax, Valium, Ativan, Tramadol (Khi không có đơn thuốc)." },
+                    { term: "Nhóm V (Nguy cơ thấp nhất)", def: "Siro ho chứa Codeine, Lyrica (Pregabalin) khi không có đơn thuốc." },
+                    { term: "Cần sa (Marijuana / Cannabis)", def: "Sử dụng giải trí/y tế hợp pháp từ 21 tuổi trở lên, nhưng bán không phép, phân phối quy mô lớn/tàng trữ vượt giới hạn vẫn bị xử lý hình sự." },
+                    { term: "Bản Ghi Nhớ Pháp Lý (Memorandum)", def: "Hành vi tàng trữ, phân phối hoặc điều chế các chất này mà không có sự cấp phép hợp lệ sẽ bị truy tố hình sự. Hình phạt phụ thuộc vào nhóm chất, số lượng, ý đồ và tiền án tiền sự trước đó." }
+                ]
+            }
+        };
+
+        const categoryListEls = document.getElementById('categoryList');
+        const contentBodyEl = document.getElementById('contentBody');
+        const searchBoxEl = document.getElementById('searchBox');
+        const suggestionsPanelEl = document.getElementById('suggestionsPanel');
+
+        // ==== HỆ THỐNG MÁY TÍNH HÌNH SỰ ====
+        let calcItems = [];
+
+        function addToCalc(id, name, fineStr, jailStr) {
+            const baseFine = parseInt(fineStr.replace(/[^0-9\.]/g, '')) || 0;
+            const baseJail = parseInt(jailStr.replace(/[^0-9]/g, '')) || 0;
+
+            const existing = calcItems.find(i => i.id === id);
+            if (existing) {
+                existing.qty += 1;
+                existing.fine = existing.qty * existing.baseFine;
+                existing.jail = existing.qty * existing.baseJail;
+            } else {
+                calcItems.push({
+                    id: id,
+                    name: name,
+                    baseFine: baseFine,
+                    baseJail: baseJail,
+                    qty: 1,
+                    fine: baseFine,
+                    jail: baseJail
+                });
+            }
+            renderCalc();
+        }
+
+        function updateCalcItem(id, field, value) {
+            const item = calcItems.find(i => i.id === id);
+            if (item) {
+                item[field] = parseInt(value) || 0;
+                renderCalc();
+            }
+        }
+
+        function changeQty(id, delta) {
+            const item = calcItems.find(i => i.id === id);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    calcItems = calcItems.filter(i => i.id !== id);
+                } else {
+                    item.fine = item.qty * item.baseFine;
+                    item.jail = item.qty * item.baseJail;
+                }
+                renderCalc();
+            }
+        }
+
+        function clearCalc() {
+            if(calcItems.length > 0 && confirm("Bạn có chắc chắn muốn xóa toàn bộ máy tính?")) {
+                calcItems = [];
+                renderCalc();
+            }
+        }
+
+        function renderCalc() {
+            const listEl = document.getElementById('calcList');
+            listEl.innerHTML = '';
+            let totalFine = 0;
+            let totalJail = 0;
+
+            if (calcItems.length === 0) {
+                listEl.innerHTML = '<div class="calc-empty">Chưa có tội danh nào được chọn.<br>Bấm nút <strong>[+ THÊM]</strong> ở thẻ luật để thêm.</div>';
+            } else {
+                calcItems.forEach(item => {
+                    totalFine += item.fine;
+                    totalJail += item.jail;
+
+                    listEl.innerHTML += `
+                        <div class="calc-item">
+                            <div class="calc-item-header">
+                                <span class="calc-item-name" title="${item.name}">${item.id} - ${item.name}</span>
+                                <div class="qty-controls">
+                                    <button onclick="changeQty('${item.id}', -1)">-</button>
+                                    <span>${item.qty}</span>
+                                    <button onclick="changeQty('${item.id}', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="calc-inputs">
+                                <div class="calc-input-group">
+                                    <label>Tiền phạt ($)</label>
+                                    <input type="number" value="${item.fine}" onchange="updateCalcItem('${item.id}', 'fine', this.value)">
+                                </div>
+                                <div class="calc-input-group">
+                                    <label>Phút / Tháng tù</label>
+                                    <input type="number" value="${item.jail}" onchange="updateCalcItem('${item.id}', 'jail', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('totalFine').innerText = '$' + totalFine.toLocaleString();
+            document.getElementById('totalJail').innerText = totalJail + ' Phút';
+        }
+
+        // ==== HIỂN THỊ GIAO DIỆN CHÍNH ====
+        function initCategories() {
+            categoryListEls.innerHTML = '';
+            Object.keys(dataset).forEach((key, index) => {
+                const li = document.createElement('li');
+                li.className = `category-item ${index === 0 ? 'active' : ''}`;
+                li.textContent = dataset[key].title;
+                li.onclick = () => selectCategory(key, li);
+                categoryListEls.appendChild(li);
+            });
+            renderContent(Object.keys(dataset)[0]);
+        }
+
+        function selectCategory(key, element) {
+            document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            renderContent(key);
+        }
+
+        function renderContent(key) {
+            const data = dataset[key];
+            contentBodyEl.innerHTML = '';
+
+            const header = document.createElement('div');
+            header.className = 'section-header';
+            header.innerHTML = `<h2>${data.title}</h2>`;
+            contentBodyEl.appendChild(header);
+
+            if (data.type === 'prelude') {
+                const grid = document.createElement('div');
+                grid.className = 'prelude-grid';
+                data.items.forEach(item => {
+                    grid.innerHTML += `
+                        <div class="prelude-card">
+                            <div class="prelude-term">${item.term}</div>
+                            <div class="prelude-definition">${item.def}</div>
+                        </div>
+                    `;
+                });
+                contentBodyEl.appendChild(grid);
+            } else {
+                const grid = document.createElement('div');
+                grid.className = 'cards-grid';
+                data.items.forEach(item => {
+                    grid.appendChild(createLawCard(item));
+                });
+                contentBodyEl.appendChild(grid);
+            }
+        }
+
+        function createLawCard(item) {
+            const card = document.createElement('div');
+            card.className = `law-card ${item.class}`;
+            card.id = `law-${item.id.replace(/[^a-zA-Z0-9]/g, '')}`;
+            card.innerHTML = `
+                <div class="law-header">
+                    <div class="law-code-title">
+                        <span class="law-code">${item.id}</span>
+                        <span class="law-title">${item.name}</span>
+                    </div>
+                    <div class="header-actions">
+                        <span class="badge-type badge-${item.class.toLowerCase()}">${item.class === 'Felony' ? 'Trọng tội' : item.class === 'Misdemeanor' ? 'Tội nhẹ' : 'Vi cảnh'}</span>
+                        <button class="btn-add" onclick="addToCalc('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${item.fine}', '${item.jail}')">+ Thêm</button>
+                    </div>
+                </div>
+                <div class="law-stats">
+                    <div class="stat-item"><span class="stat-fine">Tiền phạt:</span><span>${item.fine}</span></div>
+                    <div class="stat-item"><span class="stat-time">Mức án:</span><span>${item.jail}</span></div>
+                </div>
+                <div class="law-description">${item.desc}</div>
+            `;
+            return card;
+        }
+
+        // ==== TÌM KIẾM (AUTOCOMPLETE) ====
+        searchBoxEl.addEventListener('input', (e) => {
+            const value = e.target.value.toLowerCase().trim();
+            if (!value) {
+                suggestionsPanelEl.style.display = 'none';
+                return;
+            }
+
+            const matches = [];
+            Object.keys(dataset).forEach(catKey => {
+                const category = dataset[catKey];
+                category.items.forEach(item => {
+                    if (category.type === 'law') {
+                        if (item.id.toLowerCase().includes(value) || item.name.toLowerCase().includes(value) || item.desc.toLowerCase().includes(value)) {
+                            matches.push({ type: 'law', catKey, data: item });
+                        }
+                    } else {
+                        if (item.term.toLowerCase().includes(value) || item.def.toLowerCase().includes(value)) {
+                            matches.push({ type: 'prelude', catKey, data: item });
+                        }
+                    }
+                });
+            });
+
+            if (matches.length > 0) {
+                suggestionsPanelEl.innerHTML = '';
+                matches.slice(0, 10).forEach(match => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    
+                    if (match.type === 'law') {
+                        div.innerHTML = `
+                            <div class="suggestion-title">
+                                <span>${match.data.id} - ${match.data.name}</span>
+                                <span class="badge-type badge-${match.data.class.toLowerCase()}">${match.data.class === 'Felony' ? 'Trọng tội' : match.data.class === 'Misdemeanor' ? 'Tội nhẹ' : 'Vi cảnh'}</span>
+                            </div>
+                            <div class="suggestion-desc">${match.data.desc}</div>
+                        `;
+                        div.onclick = () => handleSuggestionClick(match.catKey, match.data.id);
+                    } else {
+                        div.innerHTML = `
+                            <div class="suggestion-title">
+                                <span>${match.data.term}</span>
+                                <span class="badge-type badge-prelude">Định nghĩa</span>
+                            </div>
+                            <div class="suggestion-desc">${match.data.def}</div>
+                        `;
+                        div.onclick = () => handleSuggestionClick(match.catKey, null);
+                    }
+                    suggestionsPanelEl.appendChild(div);
+                });
+                suggestionsPanelEl.style.display = 'block';
+            } else {
+                suggestionsPanelEl.style.display = 'none';
+            }
+        });
+
+        function handleSuggestionClick(catKey, lawId) {
+            suggestionsPanelEl.style.display = 'none';
+            searchBoxEl.value = '';
+
+            const items = document.querySelectorAll('.category-item');
+            const catIndex = Object.keys(dataset).indexOf(catKey);
+            if (catIndex !== -1) {
+                selectCategory(catKey, items[catIndex]);
+            }
+
+            if (lawId) {
+                setTimeout(() => {
+                    const elementId = `law-${lawId.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    const targetEl = document.getElementById(elementId);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        targetEl.classList.add('highlight');
+                        setTimeout(() => targetEl.classList.remove('highlight'), 2000);
+                    }
+                }, 150);
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!searchBoxEl.contains(e.target) && !suggestionsPanelEl.contains(e.target)) {
+                suggestionsPanelEl.style.display = 'none';
+            }
+        });
+
+        // Chạy khởi tạo
+        initCategories();
+    </script>
+
+</body></html>
